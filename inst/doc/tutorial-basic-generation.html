@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Basic Text Generation</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Basic Text Generation</h1>
+
+
+
+<p>This tutorial covers the lower-level API for full control over text
+generation. While <code>quick_llama()</code> is convenient for simple
+tasks, the core functions give you fine-grained control over model
+loading, context management, and generation parameters.</p>
+<div id="the-core-workflow" class="section level2">
+<h2>The Core Workflow</h2>
+<p>The recommended workflow consists of four steps:</p>
+<ol style="list-style-type: decimal">
+<li><strong><code>model_load()</code></strong> - Load the model into
+memory once</li>
+<li><strong><code>context_create()</code></strong> - Create a reusable
+context for inference</li>
+<li><strong><code>apply_chat_template()</code></strong> - Format prompts
+correctly for the model</li>
+<li><strong><code>generate()</code></strong> - Generate text from the
+context</li>
+</ol>
+</div>
+<div id="step-1-loading-a-model" class="section level2">
+<h2>Step 1: Loading a Model</h2>
+<p>Use <code>model_load()</code> to load a GGUF model into memory:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="co"># Load the default model</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># Or load from a URL (downloaded and cached automatically)</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>  <span class="st">&quot;https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf&quot;</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>)</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="co"># With GPU acceleration (offload layers to GPU)</span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>  <span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>  <span class="at">n_gpu_layers =</span> <span class="dv">999</span>  <span class="co"># Offload as many layers as possible</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>)</span></code></pre></div>
+<div id="model-loading-options" class="section level3">
+<h3>Model Loading Options</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>model_path</code></td>
+<td>-</td>
+<td>Path, URL, or cached model name</td>
+</tr>
+<tr class="even">
+<td><code>n_gpu_layers</code></td>
+<td>0</td>
+<td>Number of layers to offload to GPU</td>
+</tr>
+<tr class="odd">
+<td><code>use_mmap</code></td>
+<td>TRUE</td>
+<td>Memory-map the model file</td>
+</tr>
+<tr class="even">
+<td><code>use_mlock</code></td>
+<td>FALSE</td>
+<td>Lock model in RAM (prevents swapping)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="step-2-creating-a-context" class="section level2">
+<h2>Step 2: Creating a Context</h2>
+<p>The context manages the inference state and memory allocation:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Create a context with default settings</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># Create a context with custom settings</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  model,</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="at">n_ctx =</span> <span class="dv">4096</span>,      <span class="co"># Context window size (tokens)</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="at">n_threads =</span> <span class="dv">8</span>,     <span class="co"># CPU threads for generation</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>  <span class="at">n_seq_max =</span> <span class="dv">1</span>      <span class="co"># Maximum parallel sequences</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>)</span></code></pre></div>
+<div id="context-parameters" class="section level3">
+<h3>Context Parameters</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>n_ctx</code></td>
+<td>512</td>
+<td>Context window size in tokens</td>
+</tr>
+<tr class="even">
+<td><code>n_threads</code></td>
+<td>auto</td>
+<td>Number of CPU threads</td>
+</tr>
+<tr class="odd">
+<td><code>n_seq_max</code></td>
+<td>1</td>
+<td>Max parallel sequences (for batch generation)</td>
+</tr>
+<tr class="even">
+<td><code>verbosity</code></td>
+<td>0</td>
+<td>Logging level (0=quiet, 3=verbose)</td>
+</tr>
+</tbody>
+</table>
+<p>The context window (<code>n_ctx</code>) determines how much text the
+model can “see” at once. Larger values allow longer conversations but
+use more memory.</p>
+</div>
+</div>
+<div id="step-3-formatting-prompts-with-chat-templates" class="section level2">
+<h2>Step 3: Formatting Prompts with Chat Templates</h2>
+<p>Modern LLMs are trained on specific conversation formats. The
+<code>apply_chat_template()</code> function formats your messages
+correctly:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Define a conversation as a list of messages</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;system&quot;</span>, <span class="at">content =</span> <span class="st">&quot;You are a helpful R programming assistant.&quot;</span>),</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> <span class="st">&quot;How do I read a CSV file?&quot;</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>)</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># Apply the model&#39;s chat template</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>formatted_prompt <span class="ot">&lt;-</span> <span class="fu">apply_chat_template</span>(model, messages)</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="fu">cat</span>(formatted_prompt)</span></code></pre></div>
+<pre><code>#&gt; &lt;|begin_of_text|&gt;&lt;|start_header_id|&gt;system&lt;|end_header_id|&gt;
+#&gt;
+#&gt; You are a helpful R programming assistant.&lt;|eot_id|&gt;&lt;|start_header_id|&gt;user&lt;|end_header_id|&gt;
+#&gt;
+#&gt; How do I read a CSV file?&lt;|eot_id|&gt;&lt;|start_header_id|&gt;assistant&lt;|end_header_id|&gt;</code></pre>
+<div id="multi-turn-conversations" class="section level3">
+<h3>Multi-Turn Conversations</h3>
+<p>You can include multiple turns in the conversation:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;system&quot;</span>, <span class="at">content =</span> <span class="st">&quot;You are a helpful assistant.&quot;</span>),</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> <span class="st">&quot;What is R?&quot;</span>),</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;assistant&quot;</span>, <span class="at">content =</span> <span class="st">&quot;R is a programming language for statistical computing.&quot;</span>),</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> <span class="st">&quot;How do I install packages?&quot;</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>)</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>formatted_prompt <span class="ot">&lt;-</span> <span class="fu">apply_chat_template</span>(model, messages)</span></code></pre></div>
+</div>
+</div>
+<div id="step-4-generating-text" class="section level2">
+<h2>Step 4: Generating Text</h2>
+<p>Use <code>generate()</code> to produce text from the formatted
+prompt:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Basic generation</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>output <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, formatted_prompt)</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="fu">cat</span>(output)</span></code></pre></div>
+<pre><code>#&gt; To read a CSV file in R, you can use the `read.csv()` function:
+#&gt;
+#&gt; ```r
+#&gt; data &lt;- read.csv(&quot;your_file.csv&quot;)
+#&gt; ```</code></pre>
+<div id="generation-parameters" class="section level3">
+<h3>Generation Parameters</h3>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>output <span class="ot">&lt;-</span> <span class="fu">generate</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  ctx,</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  formatted_prompt,</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">200</span>,        <span class="co"># Maximum tokens to generate</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="at">temperature =</span> <span class="fl">0.0</span>,       <span class="co"># Creativity (0 = deterministic)</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="at">top_k =</span> <span class="dv">40</span>,              <span class="co"># Consider top K tokens</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>  <span class="at">top_p =</span> <span class="fl">1.0</span>,             <span class="co"># Nucleus sampling threshold</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>  <span class="at">repeat_last_n =</span> <span class="dv">0</span>,       <span class="co"># Tokens to consider for repetition penalty</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="at">penalty_repeat =</span> <span class="fl">1.0</span>,    <span class="co"># Repetition penalty (&gt;1 discourages)</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">1234</span>              <span class="co"># Random seed for reproducibility</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>)</span></code></pre></div>
+<table>
+<thead>
+<tr class="header">
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>max_tokens</code></td>
+<td>256</td>
+<td>Maximum tokens to generate</td>
+</tr>
+<tr class="even">
+<td><code>temperature</code></td>
+<td>0.0</td>
+<td>Sampling temperature (0 = greedy)</td>
+</tr>
+<tr class="odd">
+<td><code>top_k</code></td>
+<td>40</td>
+<td>Top-K sampling</td>
+</tr>
+<tr class="even">
+<td><code>top_p</code></td>
+<td>1.0</td>
+<td>Nucleus sampling (1.0 = disabled)</td>
+</tr>
+<tr class="odd">
+<td><code>repeat_last_n</code></td>
+<td>0</td>
+<td>Window for repetition penalty</td>
+</tr>
+<tr class="even">
+<td><code>penalty_repeat</code></td>
+<td>1.0</td>
+<td>Repetition penalty multiplier</td>
+</tr>
+<tr class="odd">
+<td><code>seed</code></td>
+<td>1234</td>
+<td>Random seed</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="complete-example" class="section level2">
+<h2>Complete Example</h2>
+<p>Here’s a complete workflow putting it all together:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># 1. Load model with GPU acceleration</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>  <span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  <span class="at">n_gpu_layers =</span> <span class="dv">999</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>)</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co"># 2. Create context with appropriate size</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">4096</span>)</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a><span class="co"># 3. Define conversation</span></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>  <span class="fu">list</span>(</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>    <span class="at">role =</span> <span class="st">&quot;system&quot;</span>,</span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>    <span class="at">content =</span> <span class="st">&quot;You are a helpful R programming assistant who provides concise code examples.&quot;</span></span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>  ),</span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>  <span class="fu">list</span>(</span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>    <span class="at">role =</span> <span class="st">&quot;user&quot;</span>,</span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>    <span class="at">content =</span> <span class="st">&quot;How do I create a bar plot in ggplot2?&quot;</span></span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>  )</span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>)</span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a></span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="co"># 4. Format prompt</span></span>
+<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a>formatted_prompt <span class="ot">&lt;-</span> <span class="fu">apply_chat_template</span>(model, messages)</span>
+<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a></span>
+<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a><span class="co"># 5. Generate response</span></span>
+<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a>output <span class="ot">&lt;-</span> <span class="fu">generate</span>(</span>
+<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a>  ctx,</span>
+<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a>  formatted_prompt,</span>
+<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">300</span>,</span>
+<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a>  <span class="at">temperature =</span> <span class="dv">0</span>,</span>
+<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">42</span></span>
+<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a>)</span>
+<span id="cb9-35"><a href="#cb9-35" tabindex="-1"></a></span>
+<span id="cb9-36"><a href="#cb9-36" tabindex="-1"></a><span class="fu">cat</span>(output)</span></code></pre></div>
+<pre><code>#&gt; Here&#39;s how to create a bar plot in ggplot2:
+#&gt;
+#&gt; ```r
+#&gt; library(ggplot2)
+#&gt;
+#&gt; # Sample data
+#&gt; df &lt;- data.frame(
+#&gt;   category = c(&quot;A&quot;, &quot;B&quot;, &quot;C&quot;, &quot;D&quot;),
+#&gt;   value = c(25, 40, 30, 45)
+#&gt; )
+#&gt;
+#&gt; # Create bar plot
+#&gt; ggplot(df, aes(x = category, y = value)) +
+#&gt;   geom_bar(stat = &quot;identity&quot;, fill = &quot;steelblue&quot;) +
+#&gt;   theme_minimal() +
+#&gt;   labs(title = &quot;Bar Plot Example&quot;, x = &quot;Category&quot;, y = &quot;Value&quot;)
+#&gt; ```</code></pre>
+</div>
+<div id="tokenization" class="section level2">
+<h2>Tokenization</h2>
+<p>For advanced use cases, you can work directly with tokens:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># Convert text to tokens</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>tokens <span class="ot">&lt;-</span> <span class="fu">tokenize</span>(model, <span class="st">&quot;Hello, world!&quot;</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="fu">print</span>(tokens)</span></code></pre></div>
+<pre><code>#&gt; [1] 9906 11  1695   0</code></pre>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># Convert tokens back to text</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>text <span class="ot">&lt;-</span> <span class="fu">detokenize</span>(model, tokens)</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="fu">print</span>(text)</span></code></pre></div>
+<pre><code>#&gt; [1] &quot;Hello, world!&quot;</code></pre>
+</div>
+<div id="tips-and-best-practices" class="section level2">
+<h2>Tips and Best Practices</h2>
+<div id="reuse-models-and-contexts" class="section level3">
+<h3>1. Reuse Models and Contexts</h3>
+<p>Loading a model is expensive. Load once and reuse:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="co"># Good: Load once, use many times</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model)</span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="cf">for</span> (prompt <span class="cf">in</span> prompts) {</span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>  result <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, prompt)</span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>}</span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a></span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a><span class="co"># Bad: Loading in a loop</span></span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a><span class="cf">for</span> (prompt <span class="cf">in</span> prompts) {</span>
+<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>  model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>)  <span class="co"># Slow!</span></span>
+<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>  ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model)</span>
+<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a>  result <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, prompt)</span>
+<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="size-your-context-appropriately" class="section level3">
+<h3>2. Size Your Context Appropriately</h3>
+<p>Larger contexts use more memory. Match <code>n_ctx</code> to your
+needs:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="co"># For short Q&amp;A</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">512</span>)</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a><span class="co"># For longer conversations</span></span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">4096</span>)</span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a></span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a><span class="co"># For document analysis</span></span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">8192</span>)</span></code></pre></div>
+</div>
+<div id="use-gpu-when-available" class="section level3">
+<h3>3. Use GPU When Available</h3>
+<p>GPU acceleration provides 5-10x speedup:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="co"># Check your hardware</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="fu">print</span>(hw<span class="sc">$</span>gpu)</span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># Enable GPU</span></span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="next-steps" class="section level2">
+<h2>Next Steps</h2>
+<ul>
+<li><strong><a href="tutorial-parallel-processing.html">Parallel
+Processing</a></strong>: Process multiple prompts efficiently</li>
+<li><strong><a href="tutorial-model-comparison.html">Model
+Comparison</a></strong>: Compare multiple models systematically</li>
+<li><strong><a href="reproducible-output.html">Reproducible
+Output</a></strong>: Ensure reproducible results</li>
+</ul>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

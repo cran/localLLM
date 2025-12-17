@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Parallel Processing</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Parallel Processing</h1>
+
+
+
+<p>When processing large datasets, parallel generation can significantly
+reduce execution time. This tutorial covers efficient batch processing
+strategies with localLLM.</p>
+<div id="why-parallel-processing" class="section level2">
+<h2>Why Parallel Processing?</h2>
+<p>Sequential processing with a for-loop processes one prompt at a time.
+Parallel processing batches multiple prompts together, sharing
+computation and reducing overhead.</p>
+<p>In benchmarks, <code>generate_parallel()</code> typically completes
+in <strong>~65% of the time</strong> compared to sequential
+<code>generate()</code> calls.</p>
+</div>
+<div id="using-generate_parallel" class="section level2">
+<h2>Using generate_parallel()</h2>
+<div id="basic-usage" class="section level3">
+<h3>Basic Usage</h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="co"># Load model</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># Create context with batch support</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>  model,</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>  <span class="at">n_ctx =</span> <span class="dv">2048</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>  <span class="at">n_seq_max =</span> <span class="dv">10</span>  <span class="co"># Allow up to 10 parallel sequences</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>)</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="co"># Define prompts</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>prompts <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>  <span class="st">&quot;What is the capital of France?&quot;</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>  <span class="st">&quot;What is the capital of Germany?&quot;</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>  <span class="st">&quot;What is the capital of Italy?&quot;</span></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>)</span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a><span class="co"># Format prompts</span></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>formatted_prompts <span class="ot">&lt;-</span> <span class="fu">sapply</span>(prompts, <span class="cf">function</span>(p) {</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>  messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;system&quot;</span>, <span class="at">content =</span> <span class="st">&quot;Answer concisely.&quot;</span>),</span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> p)</span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>  )</span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a>  <span class="fu">apply_chat_template</span>(model, messages)</span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>})</span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a></span>
+<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a><span class="co"># Process in parallel</span></span>
+<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(ctx, formatted_prompts, <span class="at">max_tokens =</span> <span class="dv">50</span>)</span>
+<span id="cb1-31"><a href="#cb1-31" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
+<pre><code>#&gt; [1] &quot;The capital of France is Paris.&quot;
+#&gt; [2] &quot;The capital of Germany is Berlin.&quot;
+#&gt; [3] &quot;The capital of Italy is Rome.&quot;</code></pre>
+</div>
+<div id="progress-tracking" class="section level3">
+<h3>Progress Tracking</h3>
+<p>For large batches, enable progress reporting:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  ctx,</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  formatted_prompts,</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">50</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">TRUE</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>#&gt; Processing 100 prompts...
+#&gt; [##########----------] 50%
+#&gt; [####################] 100%
+#&gt; Done!</code></pre>
+</div>
+</div>
+<div id="text-classification-example" class="section level2">
+<h2>Text Classification Example</h2>
+<p>Here’s a complete example classifying news articles:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co"># Load sample dataset</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;ag_news_sample&quot;</span>, <span class="at">package =</span> <span class="st">&quot;localLLM&quot;</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># Load model</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># Create context (n_seq_max determines max parallel prompts)</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">1048</span>, <span class="at">n_seq_max =</span> <span class="dv">10</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co"># Prepare all prompts</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>all_prompts <span class="ot">&lt;-</span> <span class="fu">character</span>(<span class="fu">nrow</span>(ag_news_sample))</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">nrow</span>(ag_news_sample))) {</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>  messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;system&quot;</span>, <span class="at">content =</span> <span class="st">&quot;You are a helpful assistant.&quot;</span>),</span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> <span class="fu">paste0</span>(</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a>      <span class="st">&quot;Classify this news article into exactly one category: &quot;</span>,</span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>      <span class="st">&quot;World, Sports, Business, or Sci/Tech. &quot;</span>,</span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>      <span class="st">&quot;Respond with only the category name.</span><span class="sc">\n\n</span><span class="st">&quot;</span>,</span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>      <span class="st">&quot;Title: &quot;</span>, ag_news_sample<span class="sc">$</span>title[i], <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>,</span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a>      <span class="st">&quot;Description: &quot;</span>, <span class="fu">substr</span>(ag_news_sample<span class="sc">$</span>description[i], <span class="dv">1</span>, <span class="dv">100</span>), <span class="st">&quot;</span><span class="sc">\n\n</span><span class="st">&quot;</span>,</span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>      <span class="st">&quot;Category:&quot;</span></span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a>    ))</span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a>  )</span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>  all_prompts[i] <span class="ot">&lt;-</span> <span class="fu">apply_chat_template</span>(model, messages)</span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a>}</span>
+<span id="cb5-29"><a href="#cb5-29" tabindex="-1"></a></span>
+<span id="cb5-30"><a href="#cb5-30" tabindex="-1"></a><span class="co"># Process all samples in parallel</span></span>
+<span id="cb5-31"><a href="#cb5-31" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(</span>
+<span id="cb5-32"><a href="#cb5-32" tabindex="-1"></a>  <span class="at">context =</span> ctx,</span>
+<span id="cb5-33"><a href="#cb5-33" tabindex="-1"></a>  <span class="at">prompts =</span> all_prompts,</span>
+<span id="cb5-34"><a href="#cb5-34" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">5</span>,</span>
+<span id="cb5-35"><a href="#cb5-35" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">92092</span>,</span>
+<span id="cb5-36"><a href="#cb5-36" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-37"><a href="#cb5-37" tabindex="-1"></a>  <span class="at">clean =</span> <span class="cn">TRUE</span></span>
+<span id="cb5-38"><a href="#cb5-38" tabindex="-1"></a>)</span>
+<span id="cb5-39"><a href="#cb5-39" tabindex="-1"></a></span>
+<span id="cb5-40"><a href="#cb5-40" tabindex="-1"></a><span class="co"># Extract predictions</span></span>
+<span id="cb5-41"><a href="#cb5-41" tabindex="-1"></a>ag_news_sample<span class="sc">$</span>LLM_result <span class="ot">&lt;-</span> <span class="fu">sapply</span>(results, <span class="cf">function</span>(x) {</span>
+<span id="cb5-42"><a href="#cb5-42" tabindex="-1"></a>  <span class="fu">trimws</span>(<span class="fu">gsub</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">n.*$&quot;</span>, <span class="st">&quot;&quot;</span>, x))</span>
+<span id="cb5-43"><a href="#cb5-43" tabindex="-1"></a>})</span>
+<span id="cb5-44"><a href="#cb5-44" tabindex="-1"></a></span>
+<span id="cb5-45"><a href="#cb5-45" tabindex="-1"></a><span class="co"># Calculate accuracy</span></span>
+<span id="cb5-46"><a href="#cb5-46" tabindex="-1"></a>accuracy <span class="ot">&lt;-</span> <span class="fu">mean</span>(ag_news_sample<span class="sc">$</span>LLM_result <span class="sc">==</span> ag_news_sample<span class="sc">$</span>class)</span>
+<span id="cb5-47"><a href="#cb5-47" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Accuracy:&quot;</span>, <span class="fu">round</span>(accuracy <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">&quot;%</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>#&gt; Accuracy: 87.0 %</code></pre>
+</div>
+<div id="sequential-vs-parallel-comparison" class="section level2">
+<h2>Sequential vs Parallel Comparison</h2>
+<div id="sequential-for-loop" class="section level3">
+<h3>Sequential (For Loop)</h3>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># Sequential approach</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>ag_news_sample<span class="sc">$</span>LLM_result <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">512</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="fu">system.time</span>({</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">nrow</span>(ag_news_sample))) {</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>    formatted_prompt <span class="ot">&lt;-</span> all_prompts[i]</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>    output <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, formatted_prompt, <span class="at">max_tokens =</span> <span class="dv">5</span>, <span class="at">seed =</span> <span class="dv">92092</span>)</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>    ag_news_sample<span class="sc">$</span>LLM_result[i] <span class="ot">&lt;-</span> <span class="fu">trimws</span>(output)</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>  }</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>})</span></code></pre></div>
+<pre><code>#&gt;    user  system elapsed
+#&gt;  45.32    2.15   48.23</code></pre>
+</div>
+<div id="parallel" class="section level3">
+<h3>Parallel</h3>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># Parallel approach</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">1048</span>, <span class="at">n_seq_max =</span> <span class="dv">10</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="fu">system.time</span>({</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>  results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>    ctx, all_prompts,</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>    <span class="at">max_tokens =</span> <span class="dv">5</span>,</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>    <span class="at">seed =</span> <span class="dv">92092</span>,</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>    <span class="at">progress =</span> <span class="cn">TRUE</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>  )</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>})</span></code></pre></div>
+<pre><code>#&gt;    user  system elapsed
+#&gt;  28.45    1.82   31.12</code></pre>
+<p><strong>Result</strong>: ~35% faster with parallel processing.</p>
+</div>
+</div>
+<div id="using-quick_llama-for-batches" class="section level2">
+<h2>Using quick_llama() for Batches</h2>
+<p>The simplest approach for parallel processing is passing a vector to
+<code>quick_llama()</code>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># quick_llama automatically uses parallel mode for vectors</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>prompts <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  <span class="st">&quot;Summarize: Climate change is affecting global weather patterns...&quot;</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>  <span class="st">&quot;Summarize: The stock market reached new highs today...&quot;</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>  <span class="st">&quot;Summarize: Scientists discovered a new species of deep-sea fish...&quot;</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>)</span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(prompts, <span class="at">max_tokens =</span> <span class="dv">50</span>)</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
+</div>
+<div id="performance-considerations" class="section level2">
+<h2>Performance Considerations</h2>
+<div id="context-size-and-n_seq_max" class="section level3">
+<h3>Context Size and n_seq_max</h3>
+<p>The context window is shared across parallel sequences:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># If n_ctx = 2048 and n_seq_max = 8</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co"># Each sequence gets approximately 2048/8 = 256 tokens</span></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># For longer prompts, increase n_ctx proportionally</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>  model,</span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>  <span class="at">n_ctx =</span> <span class="dv">4096</span>,   <span class="co"># Larger context</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>  <span class="at">n_seq_max =</span> <span class="dv">8</span>   <span class="co"># 8 parallel sequences</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="memory-usage" class="section level3">
+<h3>Memory Usage</h3>
+<p>Parallel processing uses more memory. Monitor with:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Available RAM:&quot;</span>, hw<span class="sc">$</span>ram_gb, <span class="st">&quot;GB</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;GPU:&quot;</span>, hw<span class="sc">$</span>gpu, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+</div>
+<div id="batch-size-recommendations" class="section level3">
+<h3>Batch Size Recommendations</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Dataset Size</th>
+<th>Recommended n_seq_max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>&lt; 100</td>
+<td>4-8</td>
+</tr>
+<tr class="even">
+<td>100-1000</td>
+<td>8-16</td>
+</tr>
+<tr class="odd">
+<td>&gt; 1000</td>
+<td>16-32 (memory permitting)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="error-handling" class="section level2">
+<h2>Error Handling</h2>
+<p>If a prompt fails, the result will contain an error message:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(ctx, prompts, <span class="at">max_tokens =</span> <span class="dv">50</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co"># Check for errors</span></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(results)) {</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">grepl</span>(<span class="st">&quot;^Error:&quot;</span>, results[i])) {</span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;Prompt&quot;</span>, i, <span class="st">&quot;failed:&quot;</span>, results[i], <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>  }</span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="complete-workflow" class="section level2">
+<h2>Complete Workflow</h2>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co"># 1. Setup</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">2048</span>, <span class="at">n_seq_max =</span> <span class="dv">10</span>)</span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co"># 2. Prepare prompts</span></span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;ag_news_sample&quot;</span>, <span class="at">package =</span> <span class="st">&quot;localLLM&quot;</span>)</span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a></span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>prompts <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="fu">seq_len</span>(<span class="fu">nrow</span>(ag_news_sample)), <span class="cf">function</span>(i) {</span>
+<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>  messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;system&quot;</span>, <span class="at">content =</span> <span class="st">&quot;Classify news articles.&quot;</span>),</span>
+<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> <span class="fu">paste0</span>(</span>
+<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a>      <span class="st">&quot;Category (World/Sports/Business/Sci/Tech): &quot;</span>,</span>
+<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a>      ag_news_sample<span class="sc">$</span>title[i]</span>
+<span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a>    ))</span>
+<span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a>  )</span>
+<span id="cb15-18"><a href="#cb15-18" tabindex="-1"></a>  <span class="fu">apply_chat_template</span>(model, messages)</span>
+<span id="cb15-19"><a href="#cb15-19" tabindex="-1"></a>})</span>
+<span id="cb15-20"><a href="#cb15-20" tabindex="-1"></a></span>
+<span id="cb15-21"><a href="#cb15-21" tabindex="-1"></a><span class="co"># 3. Process in batches with progress</span></span>
+<span id="cb15-22"><a href="#cb15-22" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(</span>
+<span id="cb15-23"><a href="#cb15-23" tabindex="-1"></a>  ctx, prompts,</span>
+<span id="cb15-24"><a href="#cb15-24" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">10</span>,</span>
+<span id="cb15-25"><a href="#cb15-25" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">42</span>,</span>
+<span id="cb15-26"><a href="#cb15-26" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb15-27"><a href="#cb15-27" tabindex="-1"></a>  <span class="at">clean =</span> <span class="cn">TRUE</span></span>
+<span id="cb15-28"><a href="#cb15-28" tabindex="-1"></a>)</span>
+<span id="cb15-29"><a href="#cb15-29" tabindex="-1"></a></span>
+<span id="cb15-30"><a href="#cb15-30" tabindex="-1"></a><span class="co"># 4. Extract and evaluate</span></span>
+<span id="cb15-31"><a href="#cb15-31" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">sapply</span>(results, <span class="cf">function</span>(x) <span class="fu">trimws</span>(<span class="fu">gsub</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">n.*&quot;</span>, <span class="st">&quot;&quot;</span>, x)))</span>
+<span id="cb15-32"><a href="#cb15-32" tabindex="-1"></a>accuracy <span class="ot">&lt;-</span> <span class="fu">mean</span>(predictions <span class="sc">==</span> ag_news_sample<span class="sc">$</span>class)</span>
+<span id="cb15-33"><a href="#cb15-33" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Accuracy:&quot;</span>, <span class="fu">round</span>(accuracy <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">&quot;%</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+</div>
+<div id="summary" class="section level2">
+<h2>Summary</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Function</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>generate()</code></td>
+<td>Single prompts, interactive use</td>
+</tr>
+<tr class="even">
+<td><code>generate_parallel()</code></td>
+<td>Batch processing, large datasets</td>
+</tr>
+<tr class="odd">
+<td><code>quick_llama(vector)</code></td>
+<td>Quick batch processing</td>
+</tr>
+<tr class="even">
+<td><code>explore()</code></td>
+<td>Multi-model comparison with batching</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="tips" class="section level2">
+<h2>Tips</h2>
+<ol style="list-style-type: decimal">
+<li><strong>Set <code>n_seq_max</code></strong> when creating context
+for parallel use</li>
+<li><strong>Scale <code>n_ctx</code></strong> with
+<code>n_seq_max</code> to give each sequence enough space</li>
+<li><strong>Enable <code>progress = TRUE</code></strong> for large
+batches</li>
+<li><strong>Use <code>clean = TRUE</code></strong> to automatically
+strip control tokens</li>
+<li><strong>Set consistent <code>seed</code></strong> for
+reproducibility across batches</li>
+</ol>
+</div>
+<div id="next-steps" class="section level2">
+<h2>Next Steps</h2>
+<ul>
+<li><strong><a href="tutorial-model-comparison.html">Model
+Comparison</a></strong>: Compare multiple models</li>
+<li><strong><a href="tutorial-basic-generation.html">Basic Text
+Generation</a></strong>: Learn the core API</li>
+<li><strong><a href="reproducible-output.html">Reproducible
+Output</a></strong>: Ensure reproducibility</li>
+</ul>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

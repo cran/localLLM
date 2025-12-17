@@ -2,6 +2,27 @@
 
 # Package-level globals for caching
 .quick_llama_env <- new.env(parent = emptyenv())
+.quick_llama_env$suppress_messages <- FALSE
+
+# Keep console quiet when verbosity < 0
+.localllm_message <- function(...) {
+  if (!isTRUE(.quick_llama_env$suppress_messages)) {
+    message(...)
+  }
+}
+
+# Track and restore quiet-mode state
+.localllm_set_quiet <- function(quiet) {
+  previous <- .quick_llama_env$suppress_messages
+  if (isTRUE(quiet)) {
+    .quick_llama_env$suppress_messages <- TRUE
+  }
+  previous
+}
+
+.localllm_restore_quiet <- function(previous) {
+  .quick_llama_env$suppress_messages <- isTRUE(previous)
+}
 
 #' Quick LLaMA Inference
 #'
@@ -34,6 +55,9 @@
 #'   Default: \code{interactive()}. Has no effect for single-prompt runs.
 #' @param clean Whether to strip chat-template control tokens from the generated output.
 #'   Defaults to \code{TRUE}.
+#' @param hash When `TRUE` (default), compute SHA-256 hashes for the prompts fed into the
+#'   backend and the corresponding outputs. Hashes are attached via the
+#'   `"hashes"` attribute for later inspection.
 #' @param ... Additional parameters passed to generate() or generate_parallel()
 #'
 #' @return Character string (single prompt) or named list (multiple prompts)
@@ -88,7 +112,11 @@ quick_llama <- function(prompt,
                         seed = 1234L,
                         progress = interactive(),
                         clean = TRUE,
+                        hash = TRUE,
                         ...) {
+  verbosity <- as.integer(verbosity)
+  previous_quiet <- .localllm_set_quiet(verbosity < 0L)
+  on.exit(.localllm_restore_quiet(previous_quiet), add = TRUE)
   
   # Validate inputs
   if (missing(prompt) || is.null(prompt) || length(prompt) == 0) {
@@ -113,50 +141,54 @@ quick_llama <- function(prompt,
     n_gpu_layers <- .detect_gpu_layers()
   }
   
+  prompt_count <- length(prompt)
+  required_seq_max <- if (prompt_count <= 1L) 2L else prompt_count + 1L
+  required_seq_max <- max(2L, as.integer(required_seq_max))
+  
   # Ensure backend is ready
   .ensure_quick_llama_ready()
   
   # Load model and context if not cached or if different model
   tryCatch({
-    .ensure_model_loaded(model, n_gpu_layers, n_ctx, n_threads, verbosity)
+    .ensure_model_loaded(model, n_gpu_layers, n_ctx, n_threads, verbosity,
+                         n_seq_max = required_seq_max)
   }, error = function(e) {
     stop("Failed to load model: ", e$message, call. = FALSE)
   })
   
-  # Format prompt with chat template if requested
-  if (auto_format) {
-    # Create messages structure
-    if (!is.null(system_prompt) && nchar(system_prompt) > 0) {
-      messages <- list(
-        list(role = "system", content = system_prompt),
-        list(role = "user", content = prompt)
-      )
-    } else {
-      messages <- list(
-        list(role = "user", content = prompt)
-      )
-    }
-    
-    # Apply chat template
-    formatted_prompt <- apply_chat_template(.quick_llama_env$model, messages, 
-                                           template = chat_template, add_assistant = TRUE)
-  } else {
-    formatted_prompt <- prompt
-  }
-  
   # Debug: check EOS token (optional)
-  if (verbosity <= 1L) {
+  if (verbosity <= 1L && !isTRUE(.quick_llama_env$suppress_messages)) {
     eos_token <- tokenize(.quick_llama_env$model, "", add_special = FALSE)
-    message("Model EOS token info available for debugging")
+    .localllm_message("Model EOS token info available for debugging")
   }
-  
+
   # Generate text
+  # Determine formatted payload for hashing downstream
+  formatted_payload <- NULL
+
   result <- if (length(prompt) == 1) {
-    # Single prompt
-    .generate_single(formatted_prompt, max_tokens, top_k, top_p, temperature, 
+    # Single prompt - format with chat template if requested
+    if (auto_format) {
+      if (!is.null(system_prompt) && nchar(system_prompt) > 0) {
+        messages <- list(
+          list(role = "system", content = system_prompt),
+          list(role = "user", content = prompt)
+        )
+      } else {
+        messages <- list(
+          list(role = "user", content = prompt)
+        )
+      }
+      formatted_prompt <- apply_chat_template(.quick_llama_env$model, messages,
+                                             template = chat_template, add_assistant = TRUE)
+    } else {
+      formatted_prompt <- prompt
+    }
+    formatted_payload <- formatted_prompt
+    .generate_single(formatted_prompt, max_tokens, top_k, top_p, temperature,
                      repeat_last_n, penalty_repeat, seed, stream)
   } else {
-    # Multiple prompts - apply formatting to each prompt
+    # Multiple prompts - apply formatting to each prompt individually
     if (auto_format) {
       formatted_prompts <- sapply(prompt, function(p) {
         if (!is.null(system_prompt) && nchar(system_prompt) > 0) {
@@ -167,13 +199,14 @@ quick_llama <- function(prompt,
         } else {
           msgs <- list(list(role = "user", content = p))
         }
-        apply_chat_template(.quick_llama_env$model, msgs, 
+        apply_chat_template(.quick_llama_env$model, msgs,
                            template = chat_template, add_assistant = TRUE)
       })
     } else {
       formatted_prompts <- prompt
     }
-    .generate_multiple(formatted_prompts, max_tokens, top_k, top_p, temperature, 
+    formatted_payload <- formatted_prompts
+    .generate_multiple(formatted_prompts, max_tokens, top_k, top_p, temperature,
                        repeat_last_n, penalty_repeat, seed, stream, progress)
   }
   
@@ -189,7 +222,64 @@ quick_llama <- function(prompt,
       result <- lapply(result, .clean_output)
     }
   }
+
+  model_ref <- if (is.character(model) && length(model) == 1) model else "<object>"
+  .document_record_event("quick_llama", list(
+    model = model_ref,
+    prompt_count = length(prompt),
+    n_threads = n_threads,
+    n_gpu_layers = n_gpu_layers,
+    n_ctx = n_ctx,
+    max_tokens = max_tokens,
+    temperature = temperature,
+    top_k = top_k,
+    top_p = top_p,
+    repeat_last_n = repeat_last_n,
+    penalty_repeat = penalty_repeat,
+    min_p = min_p,
+    seed = seed,
+    auto_format = isTRUE(auto_format),
+    clean = isTRUE(clean),
+    stream = isTRUE(stream)
+  ))
   
+  if (isTRUE(hash)) {
+    attr_model <- .hash_model_identifier(.quick_llama_env$model)
+    input_payload <- list(
+      type = "quick_llama",
+      model_identifier = attr_model,
+      model_argument = if (is.character(model) && length(model) == 1) {
+        .hash_normalise_model_source(model)
+      } else {
+        NA_character_
+      },
+      n_threads = n_threads,
+      n_ctx = n_ctx,
+      n_gpu_layers = n_gpu_layers,
+      params = list(
+        max_tokens = max_tokens,
+        top_k = top_k,
+        top_p = top_p,
+        temperature = temperature,
+        repeat_last_n = repeat_last_n,
+        penalty_repeat = penalty_repeat,
+        min_p = min_p,
+        seed = seed,
+        auto_format = isTRUE(auto_format),
+        system_prompt = system_prompt,
+        chat_template = chat_template %||% NA_character_,
+        clean = isTRUE(clean),
+        stream = isTRUE(stream)
+      ),
+      raw_prompt = prompt,
+      formatted_prompt = formatted_payload
+    )
+    output_payload <- list(type = "quick_llama", output = result)
+    input_hash <- .hash_payload(input_payload)
+    output_hash <- .hash_payload(output_payload)
+    result <- .hash_attach_metadata(result, input_hash, output_hash, "quick_llama")
+  }
+
   result
 }
 
@@ -204,6 +294,7 @@ quick_llama_reset <- function() {
   if (exists("model", envir = .quick_llama_env)) {
     rm(list = ls(envir = .quick_llama_env), envir = .quick_llama_env)
   }
+  .quick_llama_env$suppress_messages <- FALSE
   message("quick_llama state reset")
   invisible(NULL)
 }
@@ -235,8 +326,17 @@ quick_llama_reset <- function() {
   text <- gsub("</?(bos|eos)>", "", text, ignore.case = TRUE, perl = TRUE)
 
   # Remove Gemma-specific turn markers
-  text <- gsub("<start_of_turn>(?:user|model|assistant|system)?\\s*", "", text, perl = TRUE, ignore.case = TRUE)
-  text <- gsub("<end_of_turn>\\s*", "", text, perl = TRUE, ignore.case = TRUE)
+  text <- gsub("\\s*</?end_of_turn>\\s*", "", text, perl = TRUE, ignore.case = TRUE)
+  text <- gsub("\\s*</?start_of_turn>(?:user|model|assistant|system)?\\s*", "", text, perl = TRUE, ignore.case = TRUE)
+
+  text <- gsub("\\s*<\\|im_end\\|>.*$", "", text, perl = TRUE)  # Remove im_end and everything after
+  text <- gsub("<\\|im_start\\|>(?:system|user|assistant)?\\s*", "", text, perl = TRUE)
+  text <- gsub("<\\|endoftext\\|>\\s*", "", text, perl = TRUE)
+
+  # Remove Llama 3.x style control tokens such as <|eot_id|>, <|start_header_id|>
+  text <- gsub("<\\|[a-z_]+_id\\|>\\s*", "", text, perl = TRUE, ignore.case = TRUE)
+
+  text <- gsub("\\s*<\\|[^|>]*$", "", text, perl = TRUE)
 
   # Trim whitespace after removals
   text <- trimws(text)
@@ -284,13 +384,13 @@ quick_llama_reset <- function() {
 .ensure_quick_llama_ready <- function() {
   # Check if backend library is installed
   if (!lib_is_installed()) {
-    message("Backend library not found. Installing...")
+    .localllm_message("Backend library not found. Installing...")
     install_localLLM()
   }
   
   # Initialize backend if not already done
   if (!.is_backend_loaded()) {
-    message("Initializing backend...")
+    .localllm_message("Initializing backend...")
     backend_init()
   }
 }
@@ -302,32 +402,59 @@ quick_llama_reset <- function() {
 #' @param n_threads Number of threads
 #' @param verbosity Verbosity level
 #' @noRd
-.ensure_model_loaded <- function(model_path, n_gpu_layers, n_ctx, n_threads, verbosity = 1L) {
-  # Check if we have a cached model and context for this configuration
-  cache_key <- paste0(model_path, "_", n_gpu_layers, "_", n_ctx, "_", n_threads, "_", verbosity)
-  
-  if (exists("cache_key", envir = .quick_llama_env) && 
-      identical(.quick_llama_env$cache_key, cache_key) &&
-      exists("model", envir = .quick_llama_env) &&
-      exists("context", envir = .quick_llama_env)) {
-    # Model and context already loaded with same configuration
-    return()
+.ensure_model_loaded <- function(model_path, n_gpu_layers, n_ctx, n_threads, verbosity = 1L,
+                                n_seq_max = 2L) {
+  n_seq_max <- max(2L, as.integer(n_seq_max))
+  quiet_state <- .localllm_set_quiet(verbosity < 0L)
+  on.exit(.localllm_restore_quiet(quiet_state), add = TRUE)
+
+  model_key <- paste(model_path, n_gpu_layers, sep = "|")
+  context_key <- paste(model_key, n_ctx, n_threads, verbosity, n_seq_max, sep = "|")
+
+  env <- .quick_llama_env
+  model_reloaded <- FALSE
+
+  has_model <- exists("model", envir = env)
+  model_key_matches <- has_model && exists("model_key", envir = env) &&
+    identical(env$model_key, model_key)
+
+  if (!has_model || !model_key_matches) {
+    .localllm_message("Loading model...")
+    model_obj <- model_load(model_path, n_gpu_layers = n_gpu_layers,
+                            show_progress = TRUE, verbosity = verbosity)
+    env$model <- model_obj
+    env$model_key <- model_key
+    model_reloaded <- TRUE
+    if (exists("context", envir = env)) {
+      rm("context", envir = env)
+    }
+    if (exists("context_key", envir = env)) {
+      rm("context_key", envir = env)
+    }
+    if (exists("cache_key", envir = env)) {
+      rm("cache_key", envir = env)
+    }
   }
-  
-  # Load model
-  message("Loading model...")
-  model_obj <- model_load(model_path, n_gpu_layers = n_gpu_layers, show_progress = TRUE, verbosity = verbosity)
-  
-  # Create context
-  message("Creating context...")
-  context_obj <- context_create(model_obj, n_ctx = n_ctx, n_threads = n_threads, verbosity = verbosity)
-  
-  # Cache the objects
-  .quick_llama_env$model <- model_obj
-  .quick_llama_env$context <- context_obj
-  .quick_llama_env$cache_key <- cache_key
-  
-  message("Model and context ready!")
+
+  context_recreated <- FALSE
+  has_context <- exists("context", envir = env)
+  context_key_matches <- has_context && exists("context_key", envir = env) &&
+    identical(env$context_key, context_key)
+
+  if (!has_context || !context_key_matches) {
+    .localllm_message("Creating context...")
+    context_obj <- context_create(env$model, n_ctx = n_ctx, n_threads = n_threads,
+                                  n_seq_max = n_seq_max, verbosity = verbosity)
+    env$context <- context_obj
+    env$context_key <- context_key
+    context_recreated <- TRUE
+  }
+
+  env$cache_key <- context_key
+
+  if (model_reloaded || context_recreated) {
+    .localllm_message("Model and context ready!")
+  }
 }
 
 #' Generate text for single prompt
@@ -343,19 +470,20 @@ quick_llama_reset <- function() {
 #' @return Generated text string
 #' @noRd
 .generate_single <- function(prompt, max_tokens, top_k, top_p, temperature, 
-                             repeat_last_n, penalty_repeat, seed, stream, ...) {
+                             repeat_last_n, penalty_repeat, seed, stream, hash = FALSE, ...) {
   
   context <- .quick_llama_env$context
   # Generate text (auto-tokenization is now handled by generate())
-  message("Generating...")
+  .localllm_message("Generating...")
   result <- generate(context, prompt,
-                    max_tokens = max_tokens,
-                    top_k = top_k,
-                    top_p = top_p,
-                    temperature = temperature,
-                    repeat_last_n = repeat_last_n,
-                    penalty_repeat = penalty_repeat,
-                    seed = seed)
+                     max_tokens = max_tokens,
+                     top_k = top_k,
+                     top_p = top_p,
+                     temperature = temperature,
+                     repeat_last_n = repeat_last_n,
+                     penalty_repeat = penalty_repeat,
+                     seed = seed,
+                     hash = hash)
   result
 }
 
@@ -373,22 +501,24 @@ quick_llama_reset <- function() {
 #' @return Named list of generated texts
 #' @noRd
 .generate_multiple <- function(prompts, max_tokens, top_k, top_p, temperature, 
-                               repeat_last_n, penalty_repeat, seed, stream, progress, ...) {
+                               repeat_last_n, penalty_repeat, seed, stream, progress,
+                               hash = FALSE, ...) {
   
   context <- .quick_llama_env$context
   
-  message("Generating ", length(prompts), " responses...")
+  .localllm_message("Generating ", length(prompts), " responses...")
   
   # Use parallel generation for better performance (streaming flag available for future use)
   results <- generate_parallel(context, prompts,
-                              max_tokens = max_tokens,
-                              top_k = top_k,
-                              top_p = top_p,
-                              temperature = temperature,
-                              repeat_last_n = repeat_last_n,
-                              penalty_repeat = penalty_repeat,
-                              seed = seed,
-                              progress = progress)
+                               max_tokens = max_tokens,
+                               top_k = top_k,
+                               top_p = top_p,
+                               temperature = temperature,
+                               repeat_last_n = repeat_last_n,
+                               penalty_repeat = penalty_repeat,
+                               seed = seed,
+                               progress = progress,
+                               hash = hash)
   
   # Return as named list
   names(results) <- paste0("prompt_", seq_along(prompts))

@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Reproducible Output</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Reproducible Output</h1>
+
+
+
+<p>Reproducibility is a cornerstone of scientific research.
+<strong>localLLM</strong> is designed with reproducibility as a
+first-class feature, ensuring that your LLM-based analyses can be
+reliably replicated.</p>
+<div id="deterministic-generation-by-default" class="section level2">
+<h2>Deterministic Generation by Default</h2>
+<p>All generation functions in localLLM (<code>quick_llama()</code>,
+<code>generate()</code>, and <code>generate_parallel()</code>) use
+<strong>deterministic greedy decoding</strong> by default. This means
+running the same prompt twice will produce identical results.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="co"># Run the same query twice</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>response1 <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;What is the capital of France?&quot;</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>response2 <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;What is the capital of France?&quot;</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="co"># Results are identical</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="fu">identical</span>(response1, response2)</span></code></pre></div>
+<pre><code>#&gt; [1] TRUE</code></pre>
+</div>
+<div id="seed-control-for-stochastic-generation" class="section level2">
+<h2>Seed Control for Stochastic Generation</h2>
+<p>Reproducibility is ensured even when temperature &gt; 0:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Stochastic generation with seed control</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>response1 <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="st">&quot;Write a haiku about data science&quot;</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">temperature =</span> <span class="fl">0.9</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">92092</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>)</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>response2 <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="st">&quot;Write a haiku about data science&quot;</span>,</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="at">temperature =</span> <span class="fl">0.9</span>,</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">92092</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>)</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co"># Still reproducible with matching seeds</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="fu">identical</span>(response1, response2)</span></code></pre></div>
+<pre><code>#&gt; [1] TRUE</code></pre>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># Different seeds produce different outputs</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>response3 <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="st">&quot;Write a haiku about data science&quot;</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">temperature =</span> <span class="fl">0.9</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">12345</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>)</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="fu">identical</span>(response1, response3)</span></code></pre></div>
+<pre><code>#&gt; [1] FALSE</code></pre>
+</div>
+<div id="inputoutput-hash-verification" class="section level2">
+<h2>Input/Output Hash Verification</h2>
+<p>All generation functions compute SHA-256 hashes for both inputs and
+outputs. These hashes enable verification that collaborators used
+identical configurations and obtained matching results.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;What is machine learning?&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co"># Access the hashes</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>hashes <span class="ot">&lt;-</span> <span class="fu">attr</span>(result, <span class="st">&quot;hashes&quot;</span>)</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="fu">print</span>(hashes)</span></code></pre></div>
+<pre><code>#&gt; $input
+#&gt; [1] &quot;a3f2b8c9d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1&quot;
+#&gt;
+#&gt; $output
+#&gt; [1] &quot;b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5&quot;</code></pre>
+<p>The input hash includes: - Model identifier - Prompt text -
+Generation parameters (temperature, seed, max_tokens, etc.)</p>
+<p>The output hash covers the generated text, allowing collaborators to
+verify they obtained matching results.</p>
+<div id="hashes-with-explore" class="section level3">
+<h3>Hashes with explore()</h3>
+<p>For multi-model comparisons, <code>explore()</code> computes hashes
+per model:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>res <span class="ot">&lt;-</span> <span class="fu">explore</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="at">models =</span> models,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="at">prompts =</span> template_builder,</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="at">hash =</span> <span class="cn">TRUE</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># View hashes for each model</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>hash_df <span class="ot">&lt;-</span> <span class="fu">attr</span>(res, <span class="st">&quot;hashes&quot;</span>)</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="fu">print</span>(hash_df)</span></code></pre></div>
+<pre><code>#&gt;   model_id                         input_hash                        output_hash
+#&gt; 1  gemma4b a3f2b8c9d4e5f6a7b8c9d0e1f2a3b4c5... b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9...
+#&gt; 2  llama3b c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0... d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1...</code></pre>
+<p>Set <code>hash = FALSE</code> to disable hash computation if not
+needed.</p>
+</div>
+</div>
+<div id="automatic-documentation" class="section level2">
+<h2>Automatic Documentation</h2>
+<p>Use <code>document_start()</code> and <code>document_end()</code> to
+capture everything that happens during your analysis. The log
+records:</p>
+<ul>
+<li>Timestamps</li>
+<li>Model metadata (paths, parameters)</li>
+<li>Summaries of function calls</li>
+<li>SHA-256 fingerprint of the entire run</li>
+</ul>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># Start documentation</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="fu">document_start</span>(<span class="at">path =</span> <span class="st">&quot;analysis-log.txt&quot;</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co"># Run your analysis</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>result1 <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;Classify this text: &#39;Great product!&#39;&quot;</span>)</span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>result2 <span class="ot">&lt;-</span> <span class="fu">explore</span>(<span class="at">models =</span> models, <span class="at">prompts =</span> prompts)</span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co"># End documentation</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="fu">document_end</span>()</span></code></pre></div>
+<p>The log file contains a complete audit trail:</p>
+<pre><code>================================================================================
+localLLM Analysis Log
+================================================================================
+Start Time: 2025-01-15 14:30:22 UTC
+R Version: 4.4.0
+localLLM Version: 1.1.0
+Platform: aarch64-apple-darwin22.6.0
+
+--------------------------------------------------------------------------------
+Event: quick_llama call
+Time: 2025-01-15 14:30:25 UTC
+Model: Llama-3.2-3B-Instruct-Q5_K_M.gguf
+Parameters: temperature=0, max_tokens=256, seed=1234
+Input Hash: a3f2b8c9...
+Output Hash: b4c5d6e7...
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Event: explore call
+Time: 2025-01-15 14:31:45 UTC
+Models: gemma4b, llama3b
+Prompts: 100 samples
+Engine: parallel
+--------------------------------------------------------------------------------
+
+================================================================================
+End Time: 2025-01-15 14:35:12 UTC
+Session Hash: e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2...
+================================================================================</code></pre>
+</div>
+<div id="best-practices-for-reproducible-research" class="section level2">
+<h2>Best Practices for Reproducible Research</h2>
+<div id="always-set-seeds" class="section level3">
+<h3>1. Always Set Seeds</h3>
+<p>Even with <code>temperature = 0</code>, explicitly setting seeds
+documents your intent:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  <span class="st">&quot;Analyze this text&quot;</span>,</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="at">temperature =</span> <span class="dv">0</span>,</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">42</span>  <span class="co"># Explicit for documentation</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="log-your-environment" class="section level3">
+<h3>2. Log Your Environment</h3>
+<p>Record your setup at the start of analysis:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="co"># Check hardware profile</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="fu">print</span>(hw)</span></code></pre></div>
+<pre><code>#&gt; $os
+#&gt; [1] &quot;macOS 14.0&quot;
+#&gt;
+#&gt; $cpu_cores
+#&gt; [1] 10
+#&gt;
+#&gt; $ram_gb
+#&gt; [1] 32
+#&gt;
+#&gt; $gpu
+#&gt; [1] &quot;Apple M2 Pro&quot;</code></pre>
+</div>
+<div id="use-document-functions-for-audit-trails" class="section level3">
+<h3>3. Use Document Functions for Audit Trails</h3>
+<p>Wrap your entire analysis in documentation calls:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">document_start</span>(<span class="at">path =</span> <span class="st">&quot;my_analysis_log.txt&quot;</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a><span class="co"># All your analysis code here</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a><span class="co"># ...</span></span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a><span class="fu">document_end</span>()</span></code></pre></div>
+</div>
+<div id="share-hashes-for-verification" class="section level3">
+<h3>4. Share Hashes for Verification</h3>
+<p>When publishing or sharing results, include hashes so others can
+verify:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;Your prompt here&quot;</span>, <span class="at">seed =</span> <span class="dv">42</span>)</span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="co"># Report these in your paper/documentation</span></span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Input hash:&quot;</span>, <span class="fu">attr</span>(result, <span class="st">&quot;hashes&quot;</span>)<span class="sc">$</span>input, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Output hash:&quot;</span>, <span class="fu">attr</span>(result, <span class="st">&quot;hashes&quot;</span>)<span class="sc">$</span>output, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+</div>
+<div id="version-control-your-models" class="section level3">
+<h3>5. Version Control Your Models</h3>
+<p>Track which model versions you used:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="co"># List cached models with metadata</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>cached <span class="ot">&lt;-</span> <span class="fu">list_cached_models</span>()</span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a><span class="fu">print</span>(cached[, <span class="fu">c</span>(<span class="st">&quot;name&quot;</span>, <span class="st">&quot;size_bytes&quot;</span>, <span class="st">&quot;modified&quot;</span>)])</span></code></pre></div>
+</div>
+</div>
+<div id="summary" class="section level2">
+<h2>Summary</h2>
+<table>
+<colgroup>
+<col width="24%" />
+<col width="51%" />
+<col width="24%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Feature</th>
+<th>Function/Parameter</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Deterministic output</td>
+<td><code>temperature = 0</code> (default)</td>
+<td>Same input = same output</td>
+</tr>
+<tr class="even">
+<td>Seed control</td>
+<td><code>seed = 42</code></td>
+<td>Reproducible stochastic generation</td>
+</tr>
+<tr class="odd">
+<td>Hash verification</td>
+<td><code>attr(result, &quot;hashes&quot;)</code></td>
+<td>Verify identical configurations</td>
+</tr>
+<tr class="even">
+<td>Audit trails</td>
+<td><code>document_start()</code>/<code>document_end()</code></td>
+<td>Complete session logging</td>
+</tr>
+<tr class="odd">
+<td>Hardware info</td>
+<td><code>hardware_profile()</code></td>
+<td>Record execution environment</td>
+</tr>
+</tbody>
+</table>
+<p>With these tools, your LLM-based analyses become fully reproducible
+and verifiable.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

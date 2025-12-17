@@ -1,13 +1,15 @@
 useDynLib(localLLM, .registration=TRUE)
 importFrom(Rcpp, evalCpp)
+importFrom(digest, digest)
 importFrom(tools, R_user_dir)
-importFrom(utils, download.file, unzip, askYesNo)
+importFrom(utils, download.file, unzip, askYesNo, capture.output, str)
 importFrom(parallel, detectCores)
 
 # Export installation and utility functions
 export(install_localLLM)
 export(lib_is_installed)
 export(get_lib_path)
+export(hardware_profile)
 
 # Export main API functions
 export(backend_init)
@@ -30,7 +32,16 @@ export(download_model)
 export(get_model_cache_dir)
 export(list_cached_models)
 
+export(list_ollama_models)
+
 # Export high-level convenience functions
+export(explore)
+export(annotation_sink_csv)
+export(document_start)
+export(document_end)
 export(quick_llama)
 export(quick_llama_reset)
 export(set_hf_token)
+export(compute_confusion_matrices)
+export(intercoder_reliability)
+export(validate)

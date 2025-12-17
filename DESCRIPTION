@@ -1,20 +1,26 @@
 Package: localLLM
 Type: Package
 Title: Running Local LLMs with 'llama.cpp' Backend
-Version: 1.0.1
-Date: 2025-10-08
+Version: 1.1.0
+Date: 2025-12-11
 Authors@R: c(
     person("Eddie", "Yang", role = "aut", comment = c(ORCID = "0000-0002-3696-3226")), 
     person("Yaosheng", "Xu", role = c("aut", "cre"), email = "xu2009@purdue.edu", comment = c(ORCID = "0009-0006-8138-369X"))
     )
-Description: The 'localLLM' package provides R bindings to the 'llama.cpp' library for running large language models.
+Author: Eddie Yang [aut] (ORCID: <https://orcid.org/0000-0002-3696-3226>),
+  Yaosheng Xu [aut, cre] (ORCID: <https://orcid.org/0009-0006-8138-369X>)
+Maintainer: Yaosheng Xu <xu2009@purdue.edu>
+Description: Provides R bindings to the 'llama.cpp' library for running large language models.
     The package uses a lightweight architecture where the C++ backend library is downloaded
     at runtime rather than bundled with the package. 
     Package features include text generation, reproducible generation, and parallel inference.
 License: MIT + file LICENSE
 Depends: R (>= 3.6.0)
-Imports: Rcpp (>= 1.0.14), tools, utils
-Suggests: testthat (>= 3.0.0), covr
+LinkingTo: Rcpp
+Imports: Rcpp (>= 1.0.14), tools, utils, jsonlite, digest, curl,
+        R.utils
+Suggests: testthat (>= 3.0.0), covr, irr, knitr, rmarkdown
+VignetteBuilder: knitr
 URL: https://github.com/EddieYang211/localLLM
 BugReports: https://github.com/EddieYang211/localLLM/issues
 SystemRequirements: C++17, libcurl (optional, for model downloading)
@@ -22,9 +28,6 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2
 NeedsCompilation: yes
-Packaged: 2025-10-08 22:18:08 UTC; yaoshengleo
-Author: Eddie Yang [aut] (ORCID: <https://orcid.org/0000-0002-3696-3226>),
-  Yaosheng Xu [aut, cre] (ORCID: <https://orcid.org/0009-0006-8138-369X>)
-Maintainer: Yaosheng Xu <xu2009@purdue.edu>
+Packaged: 2025-12-17 04:49:11 UTC; yaoshengleo
 Repository: CRAN
-Date/Publication: 2025-10-15 19:10:08 UTC
+Date/Publication: 2025-12-17 08:20:02 UTC

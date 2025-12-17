@@ -90,6 +90,9 @@ model_load <- function(model_path, cache_dir = NULL, n_gpu_layers = 0L, use_mmap
                        use_mlock = FALSE, show_progress = TRUE, force_redownload = FALSE, 
                        verify_integrity = TRUE, check_memory = TRUE, hf_token = NULL, verbosity = 1L) {
   .ensure_backend_loaded()
+  verbosity <- as.integer(verbosity)
+  quiet_state <- .localllm_set_quiet(verbosity < 0L)
+  on.exit(.localllm_restore_quiet(quiet_state), add = TRUE)
   
   # Resolve model path (download if needed)
   resolved_path <- .resolve_model_path(model_path, cache_dir, show_progress, 
@@ -102,14 +105,37 @@ model_load <- function(model_path, cache_dir = NULL, n_gpu_layers = 0L, use_mmap
   if (check_memory) {
     .check_model_memory_requirements(resolved_path)
   }
+  .warn_if_model_exceeds_system(resolved_path, use_mmap, n_gpu_layers)
   
-  .Call("c_r_model_load_safe", 
-        as.character(resolved_path),
-        as.integer(n_gpu_layers), 
-        as.logical(use_mmap),
-        as.logical(use_mlock),
-        as.logical(check_memory),
-        as.integer(verbosity))
+  model_ptr <- .Call("c_r_model_load_safe", 
+                     as.character(resolved_path),
+                     as.integer(n_gpu_layers), 
+                     as.logical(use_mmap),
+                     as.logical(use_mlock),
+                     as.logical(check_memory),
+                     verbosity)
+
+  attr(model_ptr, "model_path") <- resolved_path
+  attr(model_ptr, "model_size_bytes") <- suppressWarnings(file.info(resolved_path)$size)
+  attr(model_ptr, "model_identifier") <- .hash_normalise_model_source(
+    model_path,
+    fallback = if (!is.null(resolved_path)) basename(resolved_path) else NA_character_
+  )
+
+  .document_record_event("model_load", list(
+    resolved_path = resolved_path,
+    cache_dir = cache_dir %||% NA_character_,
+    n_gpu_layers = n_gpu_layers,
+    use_mmap = isTRUE(use_mmap),
+    use_mlock = isTRUE(use_mlock),
+    force_redownload = isTRUE(force_redownload),
+    verify_integrity = isTRUE(verify_integrity),
+    check_memory = isTRUE(check_memory),
+    show_progress = isTRUE(show_progress),
+    verbosity = verbosity
+  ))
+
+  model_ptr
 }
 
 #' Create Inference Context for Text Generation
@@ -157,17 +183,23 @@ context_create <- function(model, n_ctx = 2048L, n_threads = 4L, n_seq_max = 1L,
   if (!inherits(model, "localllm_model")) {
     stop("Expected a localllm_model object", call. = FALSE)
   }
+  verbosity <- as.integer(verbosity)
+  quiet_state <- .localllm_set_quiet(verbosity < 0L)
+  on.exit(.localllm_restore_quiet(quiet_state), add = TRUE)
 
   ctx <- .Call("c_r_context_create",
                model,
                as.integer(n_ctx),
                as.integer(n_threads),
                as.integer(n_seq_max),
-               as.integer(verbosity))
+               verbosity)
 
   # Store model reference in context for auto-tokenization support in generate()
   attr(ctx, "model") <- model
+  attr(ctx, "n_ctx") <- as.integer(n_ctx)
+  attr(ctx, "n_seq_max") <- as.integer(n_seq_max)
 
+  .warn_if_context_large(as.integer(n_ctx), as.integer(n_seq_max))
   ctx
 }
 
@@ -321,6 +353,9 @@ apply_chat_template <- function(model, messages, template = NULL, add_assistant 
 #' @param penalty_repeat Repetition penalty strength (default: 1.0). Values >1 discourage repetition. Set to 1.0 to disable
 #' @param seed Random seed for reproducible generation (default: 1234). Use positive integers for deterministic output
 #' @param clean If TRUE, strip common chat-template control tokens from the generated text (default: FALSE).
+#' @param hash When `TRUE` (default), computes SHA-256 hashes for the provided prompt and
+#'   the resulting output. Hashes are attached via the `"hashes"` attribute for
+#'   later inspection.
 #' @return Character string containing the generated text
 #' @export
 #' @examples
@@ -345,7 +380,7 @@ apply_chat_template <- function(model, messages, template = NULL, add_assistant 
 #' @seealso \code{\link{quick_llama}}, \code{\link{generate_parallel}}, \code{\link{context_create}}
 generate <- function(context, prompt, max_tokens = 100L, top_k = 40L, top_p = 1.0,
                      temperature = 0.0, repeat_last_n = 0L, penalty_repeat = 1.0,
-                     seed = 1234L, clean = FALSE) {
+                     seed = 1234L, clean = FALSE, hash = TRUE) {
   .ensure_backend_loaded()
   if (!inherits(context, "localllm_context")) {
     stop("Expected a localllm_context object", call. = FALSE)
@@ -366,6 +401,9 @@ generate <- function(context, prompt, max_tokens = 100L, top_k = 40L, top_p = 1.
   # Auto-tokenize the prompt
   tokens <- tokenize(model, prompt, add_special = TRUE)
 
+  # Validate parameters before generation (will stop if conflict detected)
+  .validate_generation_params(tokens, max_tokens, attr(context, "n_ctx"))
+
   result <- .Call("c_r_generate",
                   context,
                   tokens,
@@ -379,6 +417,29 @@ generate <- function(context, prompt, max_tokens = 100L, top_k = 40L, top_p = 1.
 
   if (isTRUE(clean)) {
     result <- .clean_output(result)
+  }
+
+  if (isTRUE(hash)) {
+    input_payload <- list(
+      type = "generate",
+      model = .hash_model_identifier(model),
+      prompt = prompt,
+      tokens = tokens,
+      params = list(
+        max_tokens = max_tokens,
+        top_k = top_k,
+        top_p = top_p,
+        temperature = temperature,
+        repeat_last_n = repeat_last_n,
+        penalty_repeat = penalty_repeat,
+        seed = seed,
+        clean = isTRUE(clean)
+      )
+    )
+    output_payload <- list(type = "generate", output = result)
+    input_hash <- .hash_payload(input_payload)
+    output_hash <- .hash_payload(output_payload)
+    result <- .hash_attach_metadata(result, input_hash, output_hash, "generate")
   }
 
   result
@@ -398,27 +459,107 @@ generate <- function(context, prompt, max_tokens = 100L, top_k = 40L, top_p = 1.
 #' @param progress If \code{TRUE}, displays a console progress bar indicating batch
 #'   completion status while generations are running (default: FALSE).
 #' @param clean If TRUE, remove common chat-template control tokens from each generated text (default: FALSE).
+#' @param hash When `TRUE` (default), computes SHA-256 hashes for the supplied prompts and
+#'   generated outputs. Hashes are attached via the `"hashes"` attribute for
+#'   later inspection.
+#' @details When more prompts are supplied than the context can hold in parallel
+#'   (`n_seq_max - 1`), the function automatically processes them in sequential
+#'   batches while preserving the original ordering of results.
 #' @return Character vector of generated texts
 #' @export
 generate_parallel <- function(context, prompts, max_tokens = 100L, top_k = 40L, top_p = 1.0,
                               temperature = 0.0, repeat_last_n = 0L, penalty_repeat = 1.0,
-                              seed = 1234L, progress = FALSE, clean = FALSE) {
+                              seed = 1234L, progress = FALSE, clean = FALSE, hash = TRUE) {
   .ensure_backend_loaded()
   if (!inherits(context, "localllm_context")) {
     stop("Expected a localllm_context object", call. = FALSE)
   }
   
-  result <- .Call("c_r_generate_parallel",
-        context,
-        as.character(prompts),
-        as.integer(max_tokens),
-        as.integer(top_k),
-        as.numeric(top_p),
-        as.numeric(temperature),
-        as.integer(repeat_last_n),
-        as.numeric(penalty_repeat),
-        as.integer(seed),
-        as.logical(progress))
+  prompts_chr <- as.character(prompts)
+  n_prompts <- length(prompts_chr)
+  ctx_seq_max <- attr(context, "n_seq_max")
+  ctx_seq_max <- if (is.null(ctx_seq_max) || is.na(ctx_seq_max) || ctx_seq_max < 1L) 1L else as.integer(ctx_seq_max)
+  per_call_capacity <- if (ctx_seq_max <= 1L) 1L else max(1L, as.integer(ctx_seq_max - 1L))
+  needs_batching <- n_prompts > per_call_capacity
+  progress_flag <- as.logical(progress)
+  progress_flag <- if (length(progress_flag)) progress_flag[[1]] else FALSE
+  progress_bool <- isTRUE(progress_flag)
+
+  # Validate each prompt's parameters before generation
+  n_ctx <- attr(context, "n_ctx")
+  model <- attr(context, "model")
+  if (is.null(model)) {
+    stop("Context is missing its associated model; please recreate it via context_create().",
+         call. = FALSE)
+  }
+  for (i in seq_along(prompts_chr)) {
+    tokens <- tokenize(model, prompts_chr[[i]])
+    .validate_generation_params(tokens, max_tokens, n_ctx)
+  }
+
+  if (isTRUE(hash)) {
+    input_payload <- list(
+      type = "generate_parallel",
+      model = .hash_model_identifier(model),
+      prompts = prompts_chr,
+      params = list(
+        max_tokens = max_tokens,
+        top_k = top_k,
+        top_p = top_p,
+        temperature = temperature,
+        repeat_last_n = repeat_last_n,
+        penalty_repeat = penalty_repeat,
+        seed = seed,
+        clean = isTRUE(clean),
+        progress = progress_bool
+      )
+    )
+    input_hash <- .hash_payload(input_payload)
+  } else {
+    input_hash <- NULL
+  }
+
+  run_parallel_batch <- function(batch_prompts, show_progress_flag) {
+    .Call("c_r_generate_parallel",
+          context,
+          batch_prompts,
+          as.integer(max_tokens),
+          as.integer(top_k),
+          as.numeric(top_p),
+          as.numeric(temperature),
+          as.integer(repeat_last_n),
+          as.numeric(penalty_repeat),
+          as.integer(seed),
+          as.logical(show_progress_flag))
+  }
+
+  manual_progress <- needs_batching && progress_bool
+  result <- NULL
+  if (!needs_batching) {
+    result <- run_parallel_batch(prompts_chr, progress_flag)
+  } else {
+    result <- character(n_prompts)
+    idx_all <- seq_len(n_prompts)
+    batches <- split(idx_all, ceiling(idx_all / per_call_capacity))
+    processed <- 0L
+    progress_bar <- NULL
+    if (manual_progress) {
+      progress_bar <- utils::txtProgressBar(min = 0, max = n_prompts, style = 3)
+      on.exit({
+        if (!is.null(progress_bar)) close(progress_bar)
+      }, add = TRUE)
+    }
+
+    for (idx_chunk in batches) {
+      chunk_prompts <- prompts_chr[idx_chunk]
+      chunk_result <- run_parallel_batch(chunk_prompts, FALSE)
+      result[idx_chunk] <- chunk_result
+      if (manual_progress && !is.null(progress_bar)) {
+        processed <- processed + length(idx_chunk)
+        utils::setTxtProgressBar(progress_bar, processed)
+      }
+    }
+  }
 
   if (isTRUE(clean)) {
     if (is.list(result)) {
@@ -426,6 +567,12 @@ generate_parallel <- function(context, prompts, max_tokens = 100L, top_k = 40L, 
     } else if (is.character(result)) {
       result <- vapply(result, .clean_output, character(1), USE.NAMES = TRUE)
     }
+  }
+
+  if (isTRUE(hash)) {
+    output_payload <- list(type = "generate_parallel", output = result)
+    output_hash <- .hash_payload(output_payload)
+    result <- .hash_attach_metadata(result, input_hash, output_hash, "generate_parallel")
   }
 
   result
@@ -480,8 +627,8 @@ download_model <- function(model_url, output_path = NULL, show_progress = TRUE,
     dir.create(output_dir, recursive = TRUE)
   }
   
-  message("Downloading model from: ", model_url)
-  message("Saving to: ", output_path)
+  .localllm_message("Downloading model from: ", model_url)
+  .localllm_message("Saving to: ", output_path)
   
   # Download with retry mechanism
   .download_with_retry(model_url, output_path, show_progress, max_retries, hf_token)
@@ -494,7 +641,7 @@ download_model <- function(model_url, output_path = NULL, show_progress = TRUE,
     }
   }
   
-  message("Model downloaded successfully!")
+  .localllm_message("Model downloaded successfully!")
   return(output_path)
 }
 
@@ -579,7 +726,7 @@ get_model_cache_dir <- function() {
 list_cached_models <- function(cache_dir = NULL) {
   cached <- .list_cached_models(cache_dir)
   if (nrow(cached) == 0) {
-    message("No cached models were found. Use download_model() or model_load() with a URL to populate the cache.")
+    .localllm_message("No cached models were found. Use download_model() or model_load() with a URL to populate the cache.")
   }
   cached
 }
@@ -642,21 +789,21 @@ list_cached_models <- function(cache_dir = NULL) {
   matches <- matches[order(matches$modified, decreasing = TRUE), , drop = FALSE]
 
   if (nrow(matches) == 1) {
-    message("Using cached model: ", matches$path)
+    .localllm_message("Using cached model: ", matches$path)
     return(matches$path)
   }
 
-  message(sprintf("Multiple cached models matched '%s':", model_name))
+  .localllm_message(sprintf("Multiple cached models matched '%s':", model_name))
   for (i in seq_len(nrow(matches))) {
     size_mb <- round(matches$size_bytes[i] / 1024 / 1024, 1)
-    message(sprintf("[%d] %s (%.1f MB) - %s", i, matches$name[i], size_mb, matches$path[i]))
+    .localllm_message(sprintf("[%d] %s (%.1f MB) - %s", i, matches$name[i], size_mb, matches$path[i]))
   }
 
   selection_option <- getOption("localllm.cache_selection", default = NULL)
   if (!is.null(selection_option)) {
     idx <- suppressWarnings(as.integer(selection_option))
     if (!is.na(idx) && idx >= 1 && idx <= nrow(matches)) {
-      message("Selected cached model via option localllm.cache_selection = ", idx)
+      .localllm_message("Selected cached model via option localllm.cache_selection = ", idx)
       return(matches$path[idx])
     }
     warning("Ignoring invalid localllm.cache_selection option; falling back to interactive prompt.")
@@ -675,14 +822,14 @@ list_cached_models <- function(cache_dir = NULL) {
   repeat {
     answer <- readline("Enter the number of the model to use (press Enter to cancel): ")
     if (identical(answer, "")) {
-      message("Selection cancelled. Please provide a more specific path or URL.")
+      .localllm_message("Selection cancelled. Please provide a more specific path or URL.")
       return(NULL)
     }
     idx <- suppressWarnings(as.integer(answer))
     if (!is.na(idx) && idx >= 1 && idx <= nrow(matches)) {
       return(matches$path[idx])
     }
-    message(sprintf("Invalid selection. Please enter a number between 1 and %d.", nrow(matches)))
+    .localllm_message(sprintf("Invalid selection. Please enter a number between 1 and %d.", nrow(matches)))
   }
 }
 
@@ -724,13 +871,13 @@ list_cached_models <- function(cache_dir = NULL) {
     dir.create(output_dir, recursive = TRUE)
   }
   
-  message("Downloading model from: ", model_url)
-  message("Saving to: ", cache_path)
+  .localllm_message("Downloading model from: ", model_url)
+  .localllm_message("Saving to: ", cache_path)
   
   # Download with retry mechanism
   .download_with_retry(model_url, cache_path, show_progress, hf_token = hf_token)
   
-  message("Model downloaded successfully!")
+  .localllm_message("Model downloaded successfully!")
 }
 
 #' Resolve model path (download if needed)
@@ -759,14 +906,14 @@ list_cached_models <- function(cache_dir = NULL) {
     if (file.exists(cache_path) && !force_redownload) {
       if (verify_integrity) {
         if (.verify_file_integrity(cache_path)) {
-          message("Using cached model: ", cache_path)
+          .localllm_message("Using cached model: ", cache_path)
           return(cache_path)
         } else {
-          message("Cached model failed integrity check, re-downloading...")
+          .localllm_message("Cached model failed integrity check, re-downloading...")
           file.remove(cache_path)
         }
       } else {
-        message("Using cached model: ", cache_path)
+        .localllm_message("Using cached model: ", cache_path)
         return(cache_path)
       }
     }
@@ -783,6 +930,51 @@ list_cached_models <- function(cache_dir = NULL) {
     return(cache_path)
   }
   
+  # Resolve Ollama-managed models
+  if (.is_ollama_reference(model_path)) {
+    models_df <- list_ollama_models()
+
+    if (nrow(models_df) == 0L) {
+      stop("No Ollama GGUF models were discovered. Use install_localLLM() or provide a direct path.", call. = FALSE)
+    }
+
+    query <- sub("(?i)^ollama:?", "", model_path, perl = TRUE)
+    query <- trimws(query)
+    selection_idx <- NULL
+
+    if (nzchar(query)) {
+      matches_idx <- .match_ollama_reference_df(models_df, query)
+      if (length(matches_idx) == 0L) {
+        available_names <- models_df$name
+        preview <- if (length(available_names) > 6L) c(available_names[seq_len(6L)], "...") else available_names
+        stop(
+          sprintf("No Ollama GGUF model matched '%s'. Known models: %s", query, paste(preview, collapse = ", ")),
+          call. = FALSE
+        )
+      } else if (length(matches_idx) == 1L) {
+        selection_idx <- matches_idx[1L]
+      } else {
+        .localllm_message(sprintf("Multiple Ollama models matched '%s':", query))
+        selection_idx <- .select_ollama_model_df(models_df[matches_idx, , drop = FALSE])
+      }
+    } else {
+      if (nrow(models_df) == 1L) {
+        selection_idx <- 1L
+      } else {
+        .localllm_message("Detected the following Ollama GGUF models:")
+        selection_idx <- .select_ollama_model_df(models_df)
+      }
+    }
+
+    if (is.null(selection_idx)) {
+      stop("Model selection was cancelled. Provide a more specific reference.", call. = FALSE)
+    }
+
+    selected_model <- models_df[selection_idx, , drop = FALSE]
+    .localllm_message("Using Ollama model: ", selected_model$name)
+    return(selected_model$path)
+  }
+
   # Attempt to resolve by cached model name
   cached_path <- .resolve_model_name(model_path, cache_dir)
   if (!is.null(cached_path)) {
@@ -882,91 +1074,446 @@ list_cached_models <- function(cache_dir = NULL) {
   })
 }
 
+# --- Download Lock File Management ---
+# These functions handle robust file locking to prevent concurrent downloads
+# and properly detect/clean stale locks from crashed processes.
+
+#' Acquire a download lock with stale lock detection
+#' @param lock_file Path to the lock file
+#' @param timeout_seconds Maximum time to wait for lock acquisition
+#' @param stale_threshold_seconds Consider lock stale if older than this and process is dead
+#' @return TRUE if lock acquired, FALSE otherwise
+#' @noRd
+.acquire_download_lock <- function(lock_file, timeout_seconds = 300, stale_threshold_seconds = 3600) {
+  start_time <- Sys.time()
+
+  while (difftime(Sys.time(), start_time, units = "secs") < timeout_seconds) {
+    # Check for existing lock
+    if (file.exists(lock_file)) {
+      lock_info <- .read_lock_file(lock_file)
+
+      if (!is.null(lock_info)) {
+        # Check if lock is stale (process dead or lock too old)
+        if (.is_lock_stale(lock_info, stale_threshold_seconds)) {
+          .localllm_message("Removing stale lock file (PID ", lock_info$pid, " no longer running)")
+          tryCatch(file.remove(lock_file), error = function(e) NULL)
+        } else {
+          # Lock is held by active process, wait
+          .localllm_message("Download in progress by PID ", lock_info$pid, ", waiting...")
+          Sys.sleep(2)
+          next
+        }
+      } else {
+        # Corrupted lock file, remove it
+        tryCatch(file.remove(lock_file), error = function(e) NULL)
+      }
+    }
+
+    # Try to acquire lock atomically
+    if (.try_create_lock(lock_file)) {
+      return(TRUE)
+    }
+
+    # Another process beat us, retry
+    Sys.sleep(0.5)
+  }
+
+  FALSE
+}
+
+#' Try to create lock file atomically
+#' @param lock_file Path to the lock file
+#' @return TRUE if lock was created, FALSE if it already exists
+#' @noRd
+.try_create_lock <- function(lock_file) {
+  lock_content <- list(
+    pid = Sys.getpid(),
+    timestamp = as.numeric(Sys.time()),
+    hostname = Sys.info()[["nodename"]]
+  )
+
+  # Create temp file first, then rename (atomic on most filesystems)
+  temp_lock <- paste0(lock_file, ".", Sys.getpid(), ".", format(as.numeric(Sys.time()) * 1000, scientific = FALSE))
+
+  tryCatch({
+    # Ensure parent directory exists
+    lock_dir <- dirname(lock_file)
+    if (!dir.exists(lock_dir)) {
+      dir.create(lock_dir, recursive = TRUE)
+    }
+
+    # Write lock info to temp file
+    writeLines(jsonlite::toJSON(lock_content, auto_unbox = TRUE), temp_lock)
+
+    # Atomic rename - fails if target exists (on POSIX systems)
+    # On Windows, we need a fallback
+    if (.Platform$OS.type == "unix") {
+      # Use link + unlink for atomic creation
+      result <- tryCatch({
+        file.link(temp_lock, lock_file)
+        file.remove(temp_lock)
+        TRUE
+      }, error = function(e) {
+        tryCatch(file.remove(temp_lock), error = function(e) NULL)
+        FALSE
+      }, warning = function(w) {
+        tryCatch(file.remove(temp_lock), error = function(e) NULL)
+        FALSE
+      })
+      return(result)
+    } else {
+      # Windows fallback: check-then-rename (small race window)
+      if (!file.exists(lock_file)) {
+        file.rename(temp_lock, lock_file)
+        return(TRUE)
+      } else {
+        tryCatch(file.remove(temp_lock), error = function(e) NULL)
+        return(FALSE)
+      }
+    }
+  }, error = function(e) {
+    tryCatch(file.remove(temp_lock), error = function(e) NULL)
+    FALSE
+  })
+}
+
+#' Read and parse lock file contents
+#' @param lock_file Path to the lock file
+#' @return List with pid, timestamp, hostname or NULL if invalid
+#' @noRd
+.read_lock_file <- function(lock_file) {
+  tryCatch({
+    content <- readLines(lock_file, warn = FALSE)
+    if (length(content) == 0) return(NULL)
+    jsonlite::fromJSON(paste(content, collapse = "\n"))
+  }, error = function(e) NULL)
+}
+
+#' Check if a lock is stale
+#' @param lock_info List containing pid and timestamp
+#' @param stale_threshold_seconds Maximum age before lock is considered stale
+#' @return TRUE if lock is stale, FALSE otherwise
+#' @noRd
+.is_lock_stale <- function(lock_info, stale_threshold_seconds) {
+  if (is.null(lock_info$pid) || is.null(lock_info$timestamp)) {
+    return(TRUE)  # Malformed lock is stale
+  }
+
+  # Check if process is still running
+  pid_alive <- .is_pid_alive(lock_info$pid)
+
+  # Check if lock is too old (fallback for zombie processes or cross-machine locks)
+  lock_age <- as.numeric(Sys.time()) - lock_info$timestamp
+  too_old <- lock_age > stale_threshold_seconds
+
+  # Lock is stale if process is dead OR lock is very old
+  !pid_alive || too_old
+}
+
+#' Check if a process ID is still running
+#' @param pid Process ID to check
+#' @return TRUE if process is alive, FALSE otherwise
+#' @noRd
+.is_pid_alive <- function(pid) {
+  if (.Platform$OS.type == "unix") {
+    # Send signal 0 to check if process exists
+    result <- suppressWarnings(system2("kill", c("-0", as.character(pid)),
+                                        stdout = FALSE, stderr = FALSE))
+    return(result == 0)
+  } else {
+    # Windows: use tasklist
+    result <- suppressWarnings(system2("tasklist",
+                                        c("/FI", paste0("\"PID eq ", pid, "\""), "/NH"),
+                                        stdout = TRUE, stderr = FALSE))
+    return(any(grepl(as.character(pid), result)))
+  }
+}
+
+#' Release a download lock
+#' @param lock_file Path to the lock file
+#' @noRd
+.release_download_lock <- function(lock_file) {
+  if (file.exists(lock_file)) {
+    # Only remove if we own the lock
+    lock_info <- .read_lock_file(lock_file)
+    if (!is.null(lock_info) && identical(as.integer(lock_info$pid), Sys.getpid())) {
+      tryCatch(file.remove(lock_file), error = function(e) NULL)
+    }
+  }
+}
+
+# --- Download Timeout Support ---
+
+#' Execute an expression with a timeout
+#' @param expr Expression to evaluate
+#' @param timeout_seconds Timeout in seconds
+#' @return Result of expr
+#' @noRd
+.with_download_timeout <- function(expr, timeout_seconds = 3600) {
+  if (.Platform$OS.type == "unix") {
+    # Use setTimeLimit for Unix systems
+    setTimeLimit(elapsed = timeout_seconds, transient = TRUE)
+    on.exit(setTimeLimit(elapsed = Inf, transient = FALSE), add = TRUE)
+    tryCatch(
+      expr,
+      error = function(e) {
+        if (grepl("reached elapsed time limit", e$message)) {
+          stop("Download timed out after ", timeout_seconds, " seconds", call. = FALSE)
+        }
+        stop(e)
+      }
+    )
+  } else {
+    # Windows: setTimeLimit doesn't work well for external calls
+    # Use R.utils::withTimeout if available
+    if (requireNamespace("R.utils", quietly = TRUE)) {
+      tryCatch(
+        R.utils::withTimeout(expr, timeout = timeout_seconds, onTimeout = "error"),
+        TimeoutException = function(e) {
+          stop("Download timed out after ", timeout_seconds, " seconds", call. = FALSE)
+        },
+        error = function(e) {
+          if (grepl("timeout|Timeout", e$message, ignore.case = TRUE)) {
+            stop("Download timed out after ", timeout_seconds, " seconds", call. = FALSE)
+          }
+          stop(e)
+        }
+      )
+    } else {
+      # Fallback: no timeout protection on Windows without R.utils
+      # Issue a one-time warning
+      if (is.null(getOption("localllm.timeout_warning_shown"))) {
+        warning("Download timeout not available on Windows without the 'R.utils' package. ",
+                "Consider installing it for timeout support.", call. = FALSE)
+        options(localllm.timeout_warning_shown = TRUE)
+      }
+      expr
+    }
+  }
+}
+
+# --- Authenticated Download Support ---
+
+#' Download file with authentication support (R fallback)
+#' @param url URL to download
+#' @param destfile Destination file path
+#' @param show_progress Whether to show progress
+#' @return TRUE invisibly on success
+#' @noRd
+.download_with_auth <- function(url, destfile, show_progress = TRUE) {
+  token <- Sys.getenv("HF_TOKEN", "")
+
+  # If curl package is available and we have a token (or for better reliability), use curl
+  if (requireNamespace("curl", quietly = TRUE)) {
+    handle <- curl::new_handle()
+
+    # Set headers
+    headers <- c(`User-Agent` = "localLLM-R-package")
+    if (nzchar(token)) {
+      headers <- c(headers, Authorization = paste("Bearer", token))
+    }
+    do.call(curl::handle_setheaders, c(list(handle), as.list(headers)))
+
+    curl::handle_setopt(handle,
+                        followlocation = TRUE,
+                        failonerror = TRUE,
+                        connecttimeout = 30)
+
+    if (!show_progress) {
+      curl::handle_setopt(handle, noprogress = TRUE)
+    }
+
+    curl::curl_download(url, destfile, handle = handle)
+    return(invisible(TRUE))
+  }
+
+  # Fallback to download.file
+  if (nzchar(token)) {
+    # Check if R version supports headers parameter (R >= 4.2.0)
+    if (getRversion() >= "4.2.0") {
+      utils::download.file(url, destfile, mode = "wb", method = "libcurl",
+                          quiet = !show_progress,
+                          headers = c(Authorization = paste("Bearer", token)))
+    } else {
+      # For older R versions without headers support, warn about auth limitation
+      warning("HF_TOKEN is set but R version < 4.2 cannot pass headers to download.file(). ",
+              "Install the 'curl' package for authenticated downloads.", call. = FALSE)
+      utils::download.file(url, destfile, mode = "wb", method = "auto",
+                          quiet = !show_progress)
+    }
+  } else {
+    # No auth needed - use standard download
+    utils::download.file(url, destfile, mode = "wb", method = "auto",
+                        quiet = !show_progress)
+  }
+
+  invisible(TRUE)
+}
+
+# --- Main Download Function ---
+
 #' Download with retry mechanism
 #' @param model_url URL to download from
 #' @param output_path Local path to save to
-#' @param show_progress Whether to show progress
-#' @param max_retries Maximum number of retries
+#' @param show_progress Whether to show download progress
+#' @param max_retries Maximum number of retries for C++ downloader
+#' @param hf_token Optional Hugging Face token
+#' @param timeout_seconds Download timeout per attempt (default: 1 hour)
+#' @param lock_timeout_seconds Time to wait for lock acquisition (default: 5 minutes)
 #' @noRd
-.download_with_retry <- function(model_url, output_path, show_progress = TRUE, max_retries = 3, hf_token = NULL) {
+.download_with_retry <- function(model_url, output_path, show_progress = TRUE,
+                                  max_retries = 3, hf_token = NULL,
+                                  timeout_seconds = 3600, lock_timeout_seconds = 300) {
   .with_hf_token(hf_token, {
     .ensure_backend_loaded()
-    
-    # Create lock file to prevent concurrent downloads
-    lock_file <- paste0(output_path, ".lock")
-    
-    # Check if another process is downloading
-    if (file.exists(lock_file)) {
-      message("Another download in progress, waiting...")
-      for (i in 1:30) {  # Wait up to 30 seconds
-        Sys.sleep(1)
-        if (!file.exists(lock_file)) break
-      }
-      
-      if (file.exists(lock_file)) {
-        stop("Download timeout: another process seems to be stuck", call. = FALSE)
-      }
+
+    # Preflight authorization check
+    preflight_error <- .preflight_hf_authorization(model_url)
+    if (!is.null(preflight_error)) {
+      stop(preflight_error, call. = FALSE)
     }
-    
-    # Create lock file
-    file.create(lock_file)
-    on.exit({
-      if (file.exists(lock_file)) {
-        file.remove(lock_file)
-      }
-    }, add = TRUE)
-    
+
+    # Acquire lock with stale detection
+    lock_file <- paste0(output_path, ".lock")
+    if (!.acquire_download_lock(lock_file, timeout_seconds = lock_timeout_seconds)) {
+      stop("Could not acquire download lock after ", lock_timeout_seconds,
+           " seconds. Another download may be in progress or a stale lock exists at: ",
+           lock_file, call. = FALSE)
+    }
+
+    # Ensure lock is released on exit
+    on.exit(.release_download_lock(lock_file), add = TRUE)
+
     last_error <- NULL
-    
+    cpp_error <- NULL
+
     for (attempt in 1:max_retries) {
       if (attempt > 1) {
-        message("Download attempt ", attempt, " of ", max_retries, "...")
+        .localllm_message("Download attempt ", attempt, " of ", max_retries, "...")
         Sys.sleep(2)  # Brief delay between retries
       }
-      
-      tryCatch({
-        # Try C++ download first
-        .Call("c_r_download_model", 
-              as.character(model_url),
-              as.character(output_path),
-              as.logical(show_progress))
-        
-        # Check if download was successful
-        if (file.exists(output_path) && file.info(output_path)$size > 0) {
-          return()
-        }
-        
-        stop("Download produced empty file")
-        
+
+      # Try C++ download with timeout
+      cpp_success <- tryCatch({
+        .with_download_timeout({
+          .Call("c_r_download_model",
+                as.character(model_url),
+                as.character(output_path),
+                as.logical(show_progress))
+
+          # Verify download succeeded
+          if (file.exists(output_path) && file.info(output_path)$size > 0) {
+            TRUE
+          } else {
+            stop("Download produced empty file")
+          }
+        }, timeout_seconds = timeout_seconds)
       }, error = function(e) {
+        cpp_error <<- e
         last_error <<- e
-        
+
         # Clean up partial download
         if (file.exists(output_path)) {
-          file.remove(output_path)
+          tryCatch(file.remove(output_path), error = function(e) NULL)
         }
-        
-        # Try R fallback on last attempt
-        if (attempt == max_retries) {
-          message("C++ download failed, trying R fallback...")
-          
-          tryCatch({
-            utils::download.file(model_url, output_path, mode = "wb", 
-                                method = "auto", quiet = !show_progress)
-            
-            if (file.exists(output_path) && file.info(output_path)$size > 0) {
-              return()
-            }
-            
-          }, error = function(e2) {
-            last_error <<- e2
-          })
-        }
+        FALSE
       })
+
+      if (isTRUE(cpp_success)) {
+        return(invisible(NULL))
+      }
     }
-    
-    # If we get here, all attempts failed
-    stop("Download failed after ", max_retries, " attempts. Last error: ", 
-         last_error$message, call. = FALSE)
+
+    # C++ attempts exhausted, try R fallback once with auth support
+    .localllm_message("C++ download failed, trying R fallback with authentication support...")
+
+    r_success <- tryCatch({
+      .with_download_timeout({
+        .download_with_auth(model_url, output_path, show_progress)
+
+        if (file.exists(output_path) && file.info(output_path)$size > 0) {
+          TRUE
+        } else {
+          stop("R fallback download produced empty file")
+        }
+      }, timeout_seconds = timeout_seconds)
+    }, error = function(e) {
+      last_error <<- e
+
+      # Clean up partial download
+      if (file.exists(output_path)) {
+        tryCatch(file.remove(output_path), error = function(e) NULL)
+      }
+      FALSE
+    })
+
+    if (isTRUE(r_success)) {
+      return(invisible(NULL))
+    }
+
+    # All attempts failed - provide informative error
+    error_details <- character(0)
+    if (!is.null(cpp_error)) {
+      error_details <- c(error_details, paste("C++ downloader:", cpp_error$message))
+    }
+    if (!is.null(last_error) && !identical(last_error, cpp_error)) {
+      error_details <- c(error_details, paste("R fallback:", last_error$message))
+    }
+
+    stop("Download failed after ", max_retries, " C++ attempts + R fallback.\n",
+         paste(error_details, collapse = "\n"), call. = FALSE)
   })
-} 
+}
+
+.preflight_hf_authorization <- function(model_url) {
+  if (is.null(model_url) || !nzchar(model_url)) {
+    return(NULL)
+  }
+  if (!grepl("^https?://", model_url, ignore.case = TRUE)) {
+    return(NULL)
+  }
+  host <- tolower(sub("^https?://([^/]+).*", "\\1", model_url))
+  if (!grepl("huggingface\\.co$", host)) {
+    return(NULL)
+  }
+  if (!requireNamespace("curl", quietly = TRUE)) {
+    return(NULL)
+  }
+  handle <- curl::new_handle()
+  curl::handle_setopt(handle,
+                      nobody = TRUE,
+                      failonerror = FALSE,
+                      followlocation = TRUE,
+                      connecttimeout = 10,
+                      timeout = 30)
+  token <- Sys.getenv("HF_TOKEN", "")
+  if (nzchar(token)) {
+    curl::handle_setheaders(handle, Authorization = paste("Bearer", token))
+  }
+  result <- tryCatch(
+    curl::curl_fetch_memory(model_url, handle = handle),
+    error = function(e) e
+  )
+  status <- NA_integer_
+  if (inherits(result, "error")) {
+    if (!is.null(result$response_code)) {
+      status <- as.integer(result$response_code)
+    }
+  } else if (!is.null(result$status_code)) {
+    status <- as.integer(result$status_code)
+  }
+  if (!is.na(status) && status %in% c(401L, 403L)) {
+    if (nzchar(token)) {
+      return(sprintf(
+        "Download failed with HTTP %d even though an HF token is set. Please ensure the token can access '%s'.",
+        status,
+        model_url
+      ))
+    }
+    return(sprintf(
+      "Download requires a Hugging Face access token (HTTP %d). Run set_hf_token() or pass hf_token before retrying.",
+      status
+    ))
+  }
+  NULL
+}
