@@ -133,7 +133,7 @@ knitr::opts_chunk$set(
 ## -----------------------------------------------------------------------------
 #  # Compute confusion matrices directly
 #  matrices <- compute_confusion_matrices(
-#    predictions = annotations$matrix,
+#    annotations = annotations$annotations,
 #    gold = ag_news_sample$class
 #  )
 #  

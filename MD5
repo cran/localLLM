@@ -1,7 +1,8 @@
-cfe4c74a141abd74611792d4ac21e02b *DESCRIPTION
+060608eb3d05a71b54bf5d5ff122efef *DESCRIPTION
 9af993450274c8bd8f6a294e0f495aa3 *LICENSE
 bfa904d5f3e8af924d12fbb414d87c7e *NAMESPACE
-5703dc7f5b63da9b8a4a8bdcb9a77643 *R/annotations.R
+8af67950eeee048d6013d49aebe7cdf8 *NEWS.md
+2acf58165fb8189c13277fec0c97c080 *R/annotations.R
 dcce84ab00e1ec58e89b65dc2939270e *R/api.R
 5cf9c73860763bc6e73b97d1b4859d29 *R/capacity.R
 4270c9f423315cae6ca91306e6d4475a *R/data-ag-news-sample.R
@@ -9,7 +10,7 @@ dcce84ab00e1ec58e89b65dc2939270e *R/api.R
 79d8bfbfbc1726e63b265e3bee5790ff *R/gemma_chat_template.R
 7cf537a1c315cadf6a556432d741036c *R/hash_utils.R
 5f8a854dd8b41dcbca8dab2d82e305e9 *R/hf_token.R
-237519600a557a242f56d0291c1ea1de *R/install.R
+a73400058d8a1e051fcc94d57f97263e *R/install.R
 83d20cbc92538e00e522a17773147ba8 *R/ollama.R
 8bef560129cdc81c0412bf2e7fffe8c4 *R/quick_llama.R
 4ea04c0eb4f3c6418ed2d7fad40be54c *R/zzz.R
@@ -28,9 +29,9 @@ dee2c3524d13e8e28b83fbf741be3e32 *inst/doc/reproducible-output.Rmd
 f52db50aa91aabb9f81aab697b34f736 *inst/doc/tutorial-basic-generation.R
 b0727e3caafee7a1d56411d32983ae4b *inst/doc/tutorial-basic-generation.Rmd
 738f3c09f9d7999f9ccb03d7e084b9ef *inst/doc/tutorial-basic-generation.html
-4bac0c1bfc0cba549aa33801db23688b *inst/doc/tutorial-model-comparison.R
-e9ae73a490958fea0e960dfa97c23958 *inst/doc/tutorial-model-comparison.Rmd
-c1b264e34392dfb51d212fa3c7b5a226 *inst/doc/tutorial-model-comparison.html
+b058868fab170d77c520f2837730b2fe *inst/doc/tutorial-model-comparison.R
+c7839a470a600e190e3af5a1b8d8217d *inst/doc/tutorial-model-comparison.Rmd
+5061903efb6fcc023c6e532b4cb64899 *inst/doc/tutorial-model-comparison.html
 d3a49d16d926429aa6ec600373f002d9 *inst/doc/tutorial-ollama-integration.R
 7709f9966b2b9f478dbc2ddb2b7dc4e3 *inst/doc/tutorial-ollama-integration.Rmd
 5f8016394edbc1c2db325cc7f128470a *inst/doc/tutorial-ollama-integration.html
@@ -97,6 +98,6 @@ ab85ffb02e93a35d0c4fb6c9ca94a515 *tests/testthat/test-irr-comparison.R
 b50030ffbbf15bfc672b923515f8141f *vignettes/get-started.Rmd
 dee2c3524d13e8e28b83fbf741be3e32 *vignettes/reproducible-output.Rmd
 b0727e3caafee7a1d56411d32983ae4b *vignettes/tutorial-basic-generation.Rmd
-e9ae73a490958fea0e960dfa97c23958 *vignettes/tutorial-model-comparison.Rmd
+c7839a470a600e190e3af5a1b8d8217d *vignettes/tutorial-model-comparison.Rmd
 7709f9966b2b9f478dbc2ddb2b7dc4e3 *vignettes/tutorial-ollama-integration.Rmd
 c0f4687aebf088c46b45954a969f6f19 *vignettes/tutorial-parallel-processing.Rmd
