@@ -449,35 +449,49 @@ records:</p>
 <span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co"># End documentation</span></span>
 <span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="fu">document_end</span>()</span></code></pre></div>
 <p>The log file contains a complete audit trail:</p>
-<pre><code>================================================================================
-localLLM Analysis Log
-================================================================================
-Start Time: 2025-01-15 14:30:22 UTC
-R Version: 4.4.0
-localLLM Version: 1.1.0
-Platform: aarch64-apple-darwin22.6.0
+<pre><code>localLLM Run Log
+File: /path/to/analysis-log.txt
+Started: 2025-01-15 14:30:22 EST
+Ended: 2025-01-15 14:35:12 EST
+Duration: 289.9 seconds
 
---------------------------------------------------------------------------------
-Event: quick_llama call
-Time: 2025-01-15 14:30:25 UTC
-Model: Llama-3.2-3B-Instruct-Q5_K_M.gguf
-Parameters: temperature=0, max_tokens=256, seed=1234
-Input Hash: a3f2b8c9...
-Output Hash: b4c5d6e7...
---------------------------------------------------------------------------------
+Events:
+- [2025-01-15 14:30:22 EST] document_start
+    {
+      &quot;package_version&quot;: &quot;1.2.1&quot;,
+      &quot;r_version&quot;: &quot;4.4.1&quot;,
+      &quot;platform&quot;: &quot;aarch64-apple-darwin22.6.0&quot;,
+      &quot;os&quot;: &quot;Darwin&quot;,
+      &quot;user&quot;: &quot;researcher&quot;,
+      &quot;working_directory&quot;: &quot;/home/user/analysis&quot;
+    }
 
---------------------------------------------------------------------------------
-Event: explore call
-Time: 2025-01-15 14:31:45 UTC
-Models: gemma4b, llama3b
-Prompts: 100 samples
-Engine: parallel
---------------------------------------------------------------------------------
+- [2025-01-15 14:30:25 EST] quick_llama
+    {
+      &quot;model&quot;: &quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;,
+      &quot;prompt_count&quot;: 1,
+      &quot;n_gpu_layers&quot;: 999,
+      &quot;n_ctx&quot;: 2048,
+      &quot;max_tokens&quot;: 100,
+      &quot;temperature&quot;: 0,
+      &quot;seed&quot;: 1234,
+      &quot;auto_format&quot;: true,
+      &quot;clean&quot;: false
+    }
 
-================================================================================
-End Time: 2025-01-15 14:35:12 UTC
-Session Hash: e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2...
-================================================================================</code></pre>
+- [2025-01-15 14:30:25 EST] quick_llama_hash
+    {
+      &quot;input_hash&quot;: &quot;a3f2b8c9...&quot;,
+      &quot;output_hash&quot;: &quot;b4c5d6e7...&quot;
+    }
+
+- [2025-01-15 14:35:12 EST] document_end
+    {
+      &quot;duration_seconds&quot;: 289.9,
+      &quot;total_events&quot;: 4
+    }
+
+Hash (SHA-256): e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2...</code></pre>
 </div>
 <div id="best-practices-for-reproducible-research" class="section level2">
 <h2>Best Practices for Reproducible Research</h2>
@@ -498,15 +512,16 @@ documents your intent:</p>
 <span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
 <span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="fu">print</span>(hw)</span></code></pre></div>
 <pre><code>#&gt; $os
-#&gt; [1] &quot;macOS 14.0&quot;
+#&gt; [1] &quot;Darwin&quot;
 #&gt;
 #&gt; $cpu_cores
 #&gt; [1] 10
 #&gt;
-#&gt; $ram_gb
-#&gt; [1] 32
+#&gt; $ram_total
+#&gt; [1] 17179869184
 #&gt;
 #&gt; $gpu
+#&gt; $gpu$name
 #&gt; [1] &quot;Apple M2 Pro&quot;</code></pre>
 </div>
 <div id="use-document-functions-for-audit-trails" class="section level3">

@@ -351,11 +351,11 @@ by Ollama:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>models <span class="ot">&lt;-</span> <span class="fu">list_ollama_models</span>()</span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">print</span>(models)</span></code></pre></div>
-<pre><code>#&gt;                name      size                                    path
-#&gt; 1          llama3.2    2.0 GB ~/.ollama/models/blobs/sha256-6340dc32...
-#&gt; 2      deepseek-r1:8b  4.9 GB ~/.ollama/models/blobs/sha256-8a2b7c9e...
-#&gt; 3           gemma2:9b  5.4 GB ~/.ollama/models/blobs/sha256-9f8a7b6c...</code></pre>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">print</span>(models[, <span class="fu">c</span>(<span class="st">&quot;name&quot;</span>, <span class="st">&quot;size_gb&quot;</span>, <span class="st">&quot;modified&quot;</span>)])</span></code></pre></div>
+<pre><code>#&gt;             name size_gb            modified
+#&gt; 1       llama3.2    2.03 2025-01-10 12:00:00
+#&gt; 2 deepseek-r1:8b    4.58 2025-01-27 00:22:49
+#&gt; 3      gemma2:9b    5.44 2025-02-01 09:15:00</code></pre>
 </div>
 <div id="loading-ollama-models" class="section level2">
 <h2>Loading Ollama Models</h2>
@@ -459,7 +459,7 @@ when it matches specific patterns:</p>
 <span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
 <span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">nrow</span>(available) <span class="sc">&gt;</span> <span class="dv">0</span>) {</span>
 <span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">&quot;Found&quot;</span>, <span class="fu">nrow</span>(available), <span class="st">&quot;Ollama models:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  <span class="fu">print</span>(available[, <span class="fu">c</span>(<span class="st">&quot;name&quot;</span>, <span class="st">&quot;size&quot;</span>)])</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  <span class="fu">print</span>(available[, <span class="fu">c</span>(<span class="st">&quot;name&quot;</span>, <span class="st">&quot;size_gb&quot;</span>)])</span>
 <span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>} <span class="cf">else</span> {</span>
 <span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">&quot;No Ollama models found. Install some with: ollama pull llama3.2</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
 <span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>}</span></code></pre></div>

@@ -145,8 +145,8 @@ knitr::opts_chunk$set(
 
 ## -----------------------------------------------------------------------------
 #  hw <- hardware_profile()
-#  cat("Available RAM:", hw$ram_gb, "GB\n")
-#  cat("GPU:", hw$gpu, "\n")
+#  cat("Available RAM:", round(hw$ram_total / 1e9, 1), "GB\n")
+#  cat("GPU:", hw$gpu$name, "\n")
 
 ## -----------------------------------------------------------------------------
 #  results <- generate_parallel(ctx, prompts, max_tokens = 50)

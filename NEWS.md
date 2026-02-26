@@ -1,3 +1,13 @@
+# localLLM 1.2.1
+
+## Bug Fixes
+
+- Fix CRAN NOTE: redirect model cache to `tempdir()` during automated checks
+  so that `R CMD check` no longer creates `~/.cache/R/localLLM` in the home
+  directory (CRAN policy violation).
+- Update `hardware_profile()` example to use `\donttest{}` instead of
+  `if (interactive())` guard, per CRAN best practices.
+
 # localLLM 1.2.0
 
 ## Major Changes

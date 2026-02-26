@@ -45,19 +45,19 @@ knitr::opts_chunk$set(
 #  # From Hugging Face URL
 #  response <- quick_llama(
 #    "Explain quantum physics simply",
-#    model = "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf"
+#    model_path = "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf"
 #  )
 #  
 #  # From local file
 #  response <- quick_llama(
 #    "Explain quantum physics simply",
-#    model = "/path/to/your/model.gguf"
+#    model_path = "/path/to/your/model.gguf"
 #  )
 #  
 #  # From cache (name fragment)
 #  response <- quick_llama(
 #    "Explain quantum physics simply",
-#    model = "Llama-3.2"
+#    model_path = "Llama-3.2"
 #  )
 
 ## -----------------------------------------------------------------------------
@@ -69,8 +69,7 @@ knitr::opts_chunk$set(
 #  response <- quick_llama(
 #    prompt = "Write a haiku about programming",
 #    temperature = 0.8,      # Higher = more creative (default: 0)
-#  
-#  max_tokens = 100,       # Maximum response length
+#    max_tokens = 100,       # Maximum response length
 #    seed = 42,              # For reproducibility
 #    n_gpu_layers = 999      # Use GPU if available
 #  )

@@ -150,7 +150,7 @@ knitr::opts_chunk$set(
 ## -----------------------------------------------------------------------------
 #  # Check your hardware
 #  hw <- hardware_profile()
-#  print(hw$gpu)
+#  print(hw$gpu$name)
 #  
 #  # Enable GPU
 #  model <- model_load("model.gguf", n_gpu_layers = 999)

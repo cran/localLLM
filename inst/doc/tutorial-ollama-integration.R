@@ -9,7 +9,7 @@ knitr::opts_chunk$set(
 #  library(localLLM)
 #  
 #  models <- list_ollama_models()
-#  print(models)
+#  print(models[, c("name", "size_gb", "modified")])
 
 ## -----------------------------------------------------------------------------
 #  model <- model_load("ollama:llama3.2")
@@ -39,7 +39,7 @@ knitr::opts_chunk$set(
 #  
 #  if (nrow(available) > 0) {
 #    cat("Found", nrow(available), "Ollama models:\n")
-#    print(available[, c("name", "size")])
+#    print(available[, c("name", "size_gb")])
 #  } else {
 #    cat("No Ollama models found. Install some with: ollama pull llama3.2\n")
 #  }

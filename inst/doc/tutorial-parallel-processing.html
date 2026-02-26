@@ -527,8 +527,8 @@ in <strong>~65% of the time</strong> compared to sequential
 <h3>Memory Usage</h3>
 <p>Parallel processing uses more memory. Monitor with:</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Available RAM:&quot;</span>, hw<span class="sc">$</span>ram_gb, <span class="st">&quot;GB</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;GPU:&quot;</span>, hw<span class="sc">$</span>gpu, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Available RAM:&quot;</span>, <span class="fu">round</span>(hw<span class="sc">$</span>ram_total <span class="sc">/</span> <span class="fl">1e9</span>, <span class="dv">1</span>), <span class="st">&quot;GB</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;GPU:&quot;</span>, hw<span class="sc">$</span>gpu<span class="sc">$</span>name, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
 </div>
 <div id="batch-size-recommendations" class="section level3">
 <h3>Batch Size Recommendations</h3>

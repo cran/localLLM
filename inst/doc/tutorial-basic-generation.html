@@ -437,12 +437,12 @@ context</li>
 <tbody>
 <tr class="odd">
 <td><code>n_ctx</code></td>
-<td>512</td>
+<td>2048</td>
 <td>Context window size in tokens</td>
 </tr>
 <tr class="even">
 <td><code>n_threads</code></td>
-<td>auto</td>
+<td>4</td>
 <td>Number of CPU threads</td>
 </tr>
 <tr class="odd">
@@ -452,7 +452,7 @@ context</li>
 </tr>
 <tr class="even">
 <td><code>verbosity</code></td>
-<td>0</td>
+<td>1</td>
 <td>Logging level (0=quiet, 3=verbose)</td>
 </tr>
 </tbody>
@@ -530,7 +530,7 @@ prompt:</p>
 <tbody>
 <tr class="odd">
 <td><code>max_tokens</code></td>
-<td>256</td>
+<td>100</td>
 <td>Maximum tokens to generate</td>
 </tr>
 <tr class="even">
@@ -674,7 +674,7 @@ needs:</p>
 <p>GPU acceleration provides 5-10x speedup:</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="co"># Check your hardware</span></span>
 <span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
-<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="fu">print</span>(hw<span class="sc">$</span>gpu)</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="fu">print</span>(hw<span class="sc">$</span>gpu<span class="sc">$</span>name)</span>
 <span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a></span>
 <span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># Enable GPU</span></span>
 <span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span></code></pre></div>
