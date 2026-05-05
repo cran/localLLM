@@ -48,7 +48,12 @@ backend_free <- function() {
 #' @param force_redownload Force re-download even if cached version exists (default: FALSE). 
 #'   Useful for updating to newer model versions
 #' @param verify_integrity Verify file integrity using checksums when available (default: TRUE)
-#' @param check_memory Check if sufficient system memory is available before loading (default: TRUE)
+#' @param check_memory Check if sufficient system memory is available before loading (default: TRUE).
+#'   When memory is insufficient, a \code{warning()} is issued first (describing the size mismatch),
+#'   followed by a \code{stop()} that aborts loading. If \code{model_load()} is wrapped in
+#'   \code{tryCatch(warning = ...)}, the warning handler intercepts execution before \code{stop()}
+#'   runs: loading is still aborted, but the \code{error =} handler will not fire. To reliably catch
+#'   the cancellation, use \code{tryCatch(error = ...)} rather than a \code{warning =} handler.
 #' @param hf_token Optional Hugging Face access token to set during model resolution. Defaults to the existing `HF_TOKEN` environment variable.
 #' @param verbosity Control backend logging during model loading (default: 1L).
 #'   Larger numbers print more detail: \code{0} shows only errors, \code{1}
@@ -63,7 +68,8 @@ backend_free <- function() {
 #' model <- model_load("/path/to/my_model.gguf")
 #' 
 #' # Download from Hugging Face and cache locally
-#' hf_path = "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf"
+#' hf_path <- paste0("https://huggingface.co/Qwen/",
+#'                   "Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf")
 #' model <- model_load(hf_path)
 #' 
 #' # Load with GPU acceleration (offload 10 layers)
@@ -302,13 +308,15 @@ detokenize <- function(model, tokens) {
 #'   Role should be 'user', 'assistant', or 'system'
 #' @param template Optional custom template string (default: NULL, uses model's built-in template)
 #' @param add_assistant Whether to add assistant prompt suffix for response generation (default: TRUE)
+#' @usage apply_chat_template(model, messages, template = NULL,
+#'   add_assistant = TRUE)
 #' @return Formatted prompt string ready for text generation
 #' @export
 #' @examples
 #' \dontrun{
 #' # Load a chat model
 #' model <- model_load("path/to/chat_model.gguf")
-#' 
+#'
 #' # Format a conversation
 #' messages <- list(
 #'   list(role = "system", content = "You are a helpful assistant."),
@@ -316,10 +324,10 @@ detokenize <- function(model, tokens) {
 #'   list(role = "assistant", content = "Machine learning is..."),
 #'   list(role = "user", content = "Give me an example.")
 #' )
-#' 
+#'
 #' # Apply chat template
 #' formatted_prompt <- apply_chat_template(model, messages)
-#' 
+#'
 #' # Generate response
 #' response <- quick_llama(formatted_prompt)
 #' }
@@ -329,12 +337,41 @@ apply_chat_template <- function(model, messages, template = NULL, add_assistant 
   if (!inherits(model, "localllm_model")) {
     stop("Expected a localllm_model object", call. = FALSE)
   }
-  
+
   .Call("c_r_apply_chat_template",
         model,
         template,
         messages,
         as.logical(add_assistant))
+}
+
+#' Get All GGUF Metadata from a Loaded Model
+#'
+#' Returns all key-value metadata pairs embedded in the model's GGUF file,
+#' including architecture, tokenizer settings, chat template, and more.
+#' Useful for diagnosing issues such as missing chat templates.
+#'
+#' @param model A model object from \code{\link{model_load}}
+#' @return Named character vector where names are metadata keys and values are
+#'   the corresponding values. Common keys include
+#'   \code{general.architecture} and
+#'   \code{tokenizer.chat_template}.
+#' @export
+#' @examples
+#' \dontrun{
+#' model <- model_load("model.gguf")
+#' meta <- model_metadata(model)
+#' # Check if chat template is embedded
+#' meta["tokenizer.chat_template"]
+#' # Check model architecture
+#' meta["general.architecture"]
+#' }
+model_metadata <- function(model) {
+  .ensure_backend_loaded()
+  if (!inherits(model, "localllm_model")) {
+    stop("'model' must be a localllm_model object from model_load()", call. = FALSE)
+  }
+  .Call("c_r_model_metadata", model)
 }
 
 #' Generate Text Using Language Model Context
@@ -347,7 +384,8 @@ apply_chat_template <- function(model, messages, template = NULL, add_assistant 
 #' @param prompt Character string containing the input text prompt
 #' @param max_tokens Maximum number of tokens to generate (default: 100). Higher values produce longer responses
 #' @param top_k Top-k sampling parameter (default: 40). Limits vocabulary to k most likely tokens. Use 0 to disable
-#' @param top_p Top-p (nucleus) sampling parameter (default: 1.0). Cumulative probability threshold for token selection
+#' @param top_p Top-p (nucleus) sampling (default: 1.0). Probability threshold
+#'   for token selection.
 #' @param temperature Sampling temperature (default: 0.0). Set to 0 for greedy decoding. Higher values increase creativity
 #' @param repeat_last_n Number of recent tokens to consider for repetition penalty (default: 0). Set to 0 to disable
 #' @param penalty_repeat Repetition penalty strength (default: 1.0). Values >1 discourage repetition. Set to 1.0 to disable
@@ -356,6 +394,16 @@ apply_chat_template <- function(model, messages, template = NULL, add_assistant 
 #' @param hash When `TRUE` (default), computes SHA-256 hashes for the provided prompt and
 #'   the resulting output. Hashes are attached via the `"hashes"` attribute for
 #'   later inspection.
+#' @param verbosity Control backend logging during generation (default: 0L).
+#'   Larger numbers print more detail: \code{0} shows only errors, \code{1}
+#'   adds warnings, \code{2} prints informational messages, and \code{3}
+#'   enables the most verbose debug output. Negative values fully suppress
+#'   backend output. Defaults to quiet (\code{0}) because \code{generate()}
+#'   is typically called inside loops where per-call backend logs would be
+#'   noisy. This differs from \code{\link{model_load}} and
+#'   \code{\link{context_create}} (default \code{1L}), which run once per
+#'   session and benefit from warnings being visible. Raise to \code{2L}
+#'   or \code{3L} when debugging llama.cpp internals.
 #' @return Character string containing the generated text
 #' @export
 #' @examples
@@ -367,7 +415,8 @@ apply_chat_template <- function(model, messages, template = NULL, add_assistant 
 #' response <- generate(ctx, "Hello, how are you?", max_tokens = 50)
 #'
 #' # Creative writing with higher temperature
-#' story <- generate(ctx, "Once upon a time", max_tokens = 200, temperature = 0.8)
+#' story <- generate(ctx, "Once upon a time",
+#'                   max_tokens = 200, temperature = 0.8)
 #'
 #' # Prevent repetition
 #' no_repeat <- generate(ctx, "Tell me about AI",
@@ -380,11 +429,18 @@ apply_chat_template <- function(model, messages, template = NULL, add_assistant 
 #' @seealso \code{\link{quick_llama}}, \code{\link{generate_parallel}}, \code{\link{context_create}}
 generate <- function(context, prompt, max_tokens = 100L, top_k = 40L, top_p = 1.0,
                      temperature = 0.0, repeat_last_n = 0L, penalty_repeat = 1.0,
-                     seed = 1234L, clean = FALSE, hash = TRUE) {
+                     seed = 1234L, clean = FALSE, hash = TRUE, verbosity = 0L) {
   .ensure_backend_loaded()
   if (!inherits(context, "localllm_context")) {
     stop("Expected a localllm_context object", call. = FALSE)
   }
+
+  # Apply verbosity before any C calls. Matches the convention used by
+  # model_load() and context_create(): integer level (0-3), negative for silent.
+  verbosity <- as.integer(verbosity)
+  quiet_state <- .localllm_set_quiet(verbosity < 0L)
+  on.exit(.localllm_restore_quiet(quiet_state), add = TRUE)
+  .Call("c_r_set_verbosity", verbosity)
 
   # Validate prompt input
   if (!is.character(prompt) || length(prompt) != 1) {
@@ -451,13 +507,25 @@ generate <- function(context, prompt, max_tokens = 100L, top_k = 40L, top_p = 1.
 #' @param prompts Character vector of input text prompts
 #' @param max_tokens Maximum number of tokens to generate (default: 100)
 #' @param top_k Top-k sampling parameter (default: 40). Limits vocabulary to k most likely tokens
-#' @param top_p Top-p (nucleus) sampling parameter (default: 1.0). Cumulative probability threshold for token selection
+#' @param top_p Top-p (nucleus) sampling (default: 1.0). Probability threshold
+#'   for token selection.
 #' @param temperature Sampling temperature (default: 0.0). Set to 0 for greedy decoding. Higher values increase creativity
 #' @param repeat_last_n Number of recent tokens to consider for repetition penalty (default: 0). Set to 0 to disable
 #' @param penalty_repeat Repetition penalty strength (default: 1.0). Values >1 discourage repetition. Set to 1.0 to disable
 #' @param seed Random seed for reproducible generation (default: 1234). Use positive integers for deterministic output
-#' @param progress If \code{TRUE}, displays a console progress bar indicating batch
-#'   completion status while generations are running (default: FALSE).
+#' @param progress Show a console progress bar while batches run. Defaults to
+#'   \code{interactive()}: visible in interactive sessions, suppressed in
+#'   scripts and \code{R CMD check}.
+#' @param verbosity Control backend logging during generation (default: 0L).
+#'   Larger numbers print more detail: \code{0} shows only errors, \code{1}
+#'   adds warnings, \code{2} prints informational messages, and \code{3}
+#'   enables the most verbose debug output. Negative values fully suppress
+#'   backend output. Defaults to quiet (\code{0}) so that only the progress
+#'   bar is visible during typical batch runs, matching \code{\link{generate}}.
+#'   This differs from \code{\link{model_load}} and \code{\link{context_create}}
+#'   (default \code{1L}), which run once per session and benefit from warnings
+#'   being visible. Raise to \code{2L} or \code{3L} when debugging llama.cpp
+#'   internals.
 #' @param clean If TRUE, remove common chat-template control tokens from each generated text (default: FALSE).
 #' @param hash When `TRUE` (default), computes SHA-256 hashes for the supplied prompts and
 #'   generated outputs. Hashes are attached via the `"hashes"` attribute for
@@ -469,12 +537,20 @@ generate <- function(context, prompt, max_tokens = 100L, top_k = 40L, top_p = 1.
 #' @export
 generate_parallel <- function(context, prompts, max_tokens = 100L, top_k = 40L, top_p = 1.0,
                               temperature = 0.0, repeat_last_n = 0L, penalty_repeat = 1.0,
-                              seed = 1234L, progress = FALSE, clean = FALSE, hash = TRUE) {
+                              seed = 1234L, progress = interactive(), verbosity = 0L,
+                              clean = FALSE, hash = TRUE) {
   .ensure_backend_loaded()
   if (!inherits(context, "localllm_context")) {
     stop("Expected a localllm_context object", call. = FALSE)
   }
-  
+
+  # Apply verbosity before any C calls. Matches the convention used by
+  # model_load() and context_create(): integer level (0-3), negative for silent.
+  verbosity <- as.integer(verbosity)
+  quiet_state <- .localllm_set_quiet(verbosity < 0L)
+  on.exit(.localllm_restore_quiet(quiet_state), add = TRUE)
+  .Call("c_r_set_verbosity", verbosity)
+
   prompts_chr <- as.character(prompts)
   n_prompts <- length(prompts_chr)
   ctx_seq_max <- attr(context, "n_seq_max")
@@ -1047,31 +1123,37 @@ list_cached_models <- function(cache_dir = NULL) {
 #' @noRd
 .check_model_memory_requirements <- function(model_path) {
   .ensure_backend_loaded()
-  
-  tryCatch({
-    # Get estimated memory requirement
+
+  # Only the C calls below may fail — keep user interaction OUTSIDE tryCatch,
+  # otherwise stop() from user cancellation gets swallowed by the error handler
+  # and model_load() proceeds to mmap the file, crashing R on OOM.
+  check_result <- tryCatch({
     estimated_memory <- .Call("c_r_estimate_model_memory", as.character(model_path))
-    
-    # Check if sufficient memory is available
     memory_available <- .Call("c_r_check_memory_available", as.numeric(estimated_memory))
-    
-    if (!memory_available) {
-      file_size_mb <- round(file.info(model_path)$size / 1024 / 1024, 1)
-      estimated_mb <- round(estimated_memory / 1024 / 1024, 1)
-      
-      warning("Insufficient memory detected. Model file size: ", file_size_mb, 
-              "MB, estimated memory requirement: ", estimated_mb, "MB. ",
-              "Loading may cause system instability or crashes.", call. = FALSE)
-              
-      response <- readline("Do you want to continue anyway? (y/N): ")
-      if (tolower(trimws(response)) != "y") {
-        stop("Model loading cancelled by user due to insufficient memory", call. = FALSE)
-      }
-    }
+    list(ok = TRUE, available = isTRUE(memory_available), estimated = estimated_memory)
   }, error = function(e) {
-    # If memory check fails, issue warning but continue
     warning("Could not check memory requirements: ", e$message, call. = FALSE)
+    list(ok = FALSE)
   })
+
+  if (isTRUE(check_result$ok) && !check_result$available) {
+    file_size_mb <- round(file.info(model_path)$size / 1024 / 1024, 1)
+    estimated_mb <- round(check_result$estimated / 1024 / 1024, 1)
+
+    warning("Insufficient memory detected. Model file size: ", file_size_mb,
+            "MB, estimated memory requirement: ", estimated_mb, "MB. ",
+            "Loading may cause system instability or crashes.", call. = FALSE)
+
+    if (!interactive()) {
+      stop("Insufficient memory to load model. Set check_memory = FALSE to override.", call. = FALSE)
+    }
+    message("Insufficient memory: model requires ~", estimated_mb, " MB but available RAM may be insufficient",
+            " (file size: ", file_size_mb, " MB). Loading may cause R to crash.")
+    response <- readline("Do you want to continue anyway? (y/N): ")
+    if (tolower(trimws(response)) != "y") {
+      stop("Model loading cancelled by user due to insufficient memory", call. = FALSE)
+    }
+  }
 }
 
 # --- Download Lock File Management ---

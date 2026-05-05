@@ -358,7 +358,8 @@ to do this once.</p>
 <p><strong>Problem</strong>: <code>install_localLLM()</code> fails to
 download or install.</p>
 <p><strong>Solution</strong>: Check your platform is supported: -
-Windows (x86-64) - macOS (ARM64 / Apple Silicon) - Linux (x86-64)</p>
+Windows (x86-64) - macOS (Apple Silicon / ARM64) - macOS (Intel /
+x86-64) - Linux (x86-64)</p>
 <p>If you’re on an unsupported platform, you may need to compile
 llama.cpp manually.</p>
 </div>
@@ -368,7 +369,7 @@ llama.cpp manually.</p>
 library is installed, but generation fails.</p>
 <p><strong>Solution</strong>: Try reinstalling:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Force reinstall</span></span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">install_localLLM</span>(<span class="at">force =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">install_localLLM</span>(<span class="at">force_reinstall =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a></span>
 <span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># Verify installation</span></span>
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="fu">lib_is_installed</span>()</span></code></pre></div>
@@ -433,7 +434,7 @@ RAM. Try:</p>
 <li>Check model requirements:</li>
 </ol>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Available RAM:&quot;</span>, hw<span class="sc">$</span>ram_gb, <span class="st">&quot;GB</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Available RAM:&quot;</span>, <span class="fu">round</span>(hw<span class="sc">$</span>ram_total <span class="sc">/</span> <span class="fl">1e9</span>, <span class="dv">1</span>), <span class="st">&quot;GB</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
 </div>
 <div id="memory-check-failed-warning" class="section level3">
 <h3>“Memory check failed” warning</h3>
@@ -470,30 +471,94 @@ model:</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
 <span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="fu">print</span>(hw<span class="sc">$</span>gpu)</span></code></pre></div>
 <p>If no GPU is listed, the backend may not support your GPU. Currently
-supported: - NVIDIA GPUs (via CUDA) - Apple Silicon (Metal)</p>
+supported:</p>
+<table>
+<colgroup>
+<col width="23%" />
+<col width="30%" />
+<col width="45%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Platform</th>
+<th>GPU backend</th>
+<th>Supported hardware</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>macOS (Apple Silicon)</td>
+<td>Metal</td>
+<td>All Apple Silicon (M1 and later)</td>
+</tr>
+<tr class="even">
+<td>macOS (Intel)</td>
+<td>Metal</td>
+<td>Intel Macs running macOS 12+</td>
+</tr>
+<tr class="odd">
+<td>Windows (x86-64)</td>
+<td>Vulkan</td>
+<td>NVIDIA GeForce 10xx+, AMD RX 400+, Intel Arc</td>
+</tr>
+<tr class="even">
+<td>Linux (x86-64)</td>
+<td>Vulkan</td>
+<td>NVIDIA GeForce 10xx+, AMD RX 400+, Intel Arc</td>
+</tr>
+</tbody>
+</table>
+<p>If your GPU is not listed, install with <code>force_cpu = TRUE</code>
+to use the CPU build:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">install_localLLM</span>(<span class="at">force_cpu =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 </div>
-<div id="cuda-out-of-memory-error" class="section level3">
-<h3>“CUDA out of memory” error</h3>
+<div id="gpu-runs-out-of-memory" class="section level3">
+<h3>GPU runs out of memory</h3>
 <p><strong>Problem</strong>: GPU runs out of memory during
 generation.</p>
-<p><strong>Solution</strong>: Reduce GPU layer count:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># Offload fewer layers to GPU</span></span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">20</span>)</span></code></pre></div>
+<p><strong>Solution</strong>: Reduce GPU layer count to split the model
+between GPU and CPU:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># Offload fewer layers to GPU</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">20</span>)</span></code></pre></div>
 <hr />
 </div>
 </div>
 <div id="generation-issues" class="section level2">
 <h2>Generation Issues</h2>
+<div id="backend-prints-too-many-log-messages" class="section level3">
+<h3>Backend prints too many log messages</h3>
+<p><strong>Problem</strong>: <code>model_load()</code> or
+<code>context_create()</code> print hardware information, model
+metadata, or other log lines that clutter the console or appear in
+knitted documents and <code>R CMD check</code> output.</p>
+<p><strong>Solution</strong>: Reduce the verbosity level:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># Default (verbosity = 1): warnings only — hardware limits, context size notes</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># Fully silent loading</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>,  <span class="at">verbosity =</span> <span class="dv">0</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>ctx   <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model,     <span class="at">verbosity =</span> <span class="dv">0</span>)</span></code></pre></div>
+<p>Verbosity levels: <code>0</code> = silent, <code>1</code> = warnings
+only (default for <code>model_load</code> and
+<code>context_create</code>), <code>2</code> = informational messages,
+<code>3</code> = full debug output. <code>generate()</code> and
+<code>generate_parallel()</code> already default to
+<code>verbosity = 0</code>.</p>
+<p>Note: <code>backend_init()</code> always prints one line
+(<code>localLLM backend library loaded successfully.</code>) regardless
+of verbosity; this cannot be suppressed.</p>
+<hr />
+</div>
 <div id="output-is-garbled-or-nonsensical" class="section level3">
 <h3>Output is garbled or nonsensical</h3>
 <p><strong>Problem</strong>: The model produces meaningless text.</p>
 <p><strong>Solution</strong>: 1. Ensure you’re using a chat
 template:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> <span class="st">&quot;Your question&quot;</span>)</span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>)</span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>prompt <span class="ot">&lt;-</span> <span class="fu">apply_chat_template</span>(model, messages)</span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, prompt)</span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> <span class="st">&quot;Your question&quot;</span>)</span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>)</span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>prompt <span class="ot">&lt;-</span> <span class="fu">apply_chat_template</span>(model, messages)</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, prompt)</span></code></pre></div>
 <ol start="2" style="list-style-type: decimal">
 <li>The model file may be corrupted - redownload it</li>
 </ol>
@@ -504,22 +569,22 @@ template:</p>
 <p><strong>Problem</strong>: Output includes control tokens.</p>
 <p><strong>Solution</strong>: Use the <code>clean = TRUE</code>
 parameter:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, prompt, <span class="at">clean =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># or</span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;prompt&quot;</span>, <span class="at">clean =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, prompt, <span class="at">clean =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="co"># or</span></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;prompt&quot;</span>, <span class="at">clean =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 </div>
 <div id="generation-stops-too-early" class="section level3">
 <h3>Generation stops too early</h3>
 <p><strong>Problem</strong>: Output is cut off before completion.</p>
 <p><strong>Solution</strong>: Increase <code>max_tokens</code>:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;prompt&quot;</span>, <span class="at">max_tokens =</span> <span class="dv">500</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;prompt&quot;</span>, <span class="at">max_tokens =</span> <span class="dv">500</span>)</span></code></pre></div>
 </div>
 <div id="same-prompt-gives-different-results" class="section level3">
 <h3>Same prompt gives different results</h3>
 <p><strong>Problem</strong>: Running the same prompt twice gives
 different outputs.</p>
 <p><strong>Solution</strong>: Set a seed for reproducibility:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;prompt&quot;</span>, <span class="at">seed =</span> <span class="dv">42</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;prompt&quot;</span>, <span class="at">seed =</span> <span class="dv">42</span>)</span></code></pre></div>
 <p>With <code>temperature = 0</code> (default), outputs should be
 deterministic.</p>
 <hr />
@@ -534,14 +599,14 @@ expected.</p>
 <p><strong>Solutions</strong>:</p>
 <ol style="list-style-type: decimal">
 <li><p><strong>Use GPU acceleration</strong>:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span></code></pre></div></li>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span></code></pre></div></li>
 <li><p><strong>Use a smaller model</strong>: Q4 quantization is faster
 than Q8</p></li>
 <li><p><strong>Reduce context size</strong>:</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">512</span>)</span></code></pre></div></li>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">512</span>)</span></code></pre></div></li>
 <li><p><strong>Use parallel processing</strong> for multiple
 prompts:</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="fu">c</span>(<span class="st">&quot;prompt1&quot;</span>, <span class="st">&quot;prompt2&quot;</span>, <span class="st">&quot;prompt3&quot;</span>))</span></code></pre></div></li>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="fu">c</span>(<span class="st">&quot;prompt1&quot;</span>, <span class="st">&quot;prompt2&quot;</span>, <span class="st">&quot;prompt3&quot;</span>))</span></code></pre></div></li>
 </ol>
 </div>
 <div id="parallel-processing-isnt-faster" class="section level3">
@@ -550,11 +615,11 @@ prompts:</p>
 faster than sequential generation.</p>
 <p><strong>Solution</strong>: Ensure <code>n_seq_max</code> is set
 appropriately:</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(</span>
-<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a>  model,</span>
-<span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a>  <span class="at">n_ctx =</span> <span class="dv">2048</span>,</span>
-<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a>  <span class="at">n_seq_max =</span> <span class="dv">10</span>  <span class="co"># Allow 10 parallel sequences</span></span>
-<span id="cb19-5"><a href="#cb19-5" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(</span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>  model,</span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>  <span class="at">n_ctx =</span> <span class="dv">2048</span>,</span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a>  <span class="at">n_seq_max =</span> <span class="dv">10</span>  <span class="co"># Allow 10 parallel sequences</span></span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a>)</span></code></pre></div>
 <hr />
 </div>
 </div>
@@ -572,11 +637,11 @@ Convert your model or find a GGUF version on Hugging Face (search for
 <p><strong>Problem</strong>: An Ollama model doesn’t work when loaded
 directly.</p>
 <p><strong>Solution</strong>: Use the Ollama integration:</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="co"># List available Ollama models</span></span>
-<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a><span class="fu">list_ollama_models</span>()</span>
-<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a></span>
-<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a><span class="co"># Load via Ollama reference</span></span>
-<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;ollama:model-name&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="co"># List available Ollama models</span></span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a><span class="fu">list_ollama_models</span>()</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a><span class="co"># Load via Ollama reference</span></span>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;ollama:model-name&quot;</span>)</span></code></pre></div>
 <hr />
 </div>
 </div>
@@ -614,7 +679,8 @@ directly.</p>
 <tr class="even">
 <td>“Failed to open library”</td>
 <td>Backend installation issue</td>
-<td>Reinstall with <code>install_localLLM(force = TRUE)</code></td>
+<td>Reinstall with
+<code>install_localLLM(force_reinstall = TRUE)</code></td>
 </tr>
 <tr class="odd">
 <td>“Download timeout”</td>
@@ -643,24 +709,24 @@ directly.</p>
 </div>
 <div id="quick-reference" class="section level2">
 <h2>Quick Reference</h2>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="co"># Check installation status</span></span>
-<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="fu">lib_is_installed</span>()</span>
-<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a></span>
-<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a><span class="co"># Check hardware</span></span>
-<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="fu">hardware_profile</span>()</span>
-<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a></span>
-<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="co"># List cached models</span></span>
-<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a><span class="fu">list_cached_models</span>()</span>
-<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a></span>
-<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a><span class="co"># List Ollama models</span></span>
-<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a><span class="fu">list_ollama_models</span>()</span>
-<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a></span>
-<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a><span class="co"># Clear model cache</span></span>
-<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a>cache_dir <span class="ot">&lt;-</span> <span class="fu">file.path</span>(tools<span class="sc">::</span><span class="fu">R_user_dir</span>(<span class="st">&quot;localLLM&quot;</span>, <span class="st">&quot;cache&quot;</span>), <span class="st">&quot;models&quot;</span>)</span>
-<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a><span class="fu">unlink</span>(cache_dir, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb21-16"><a href="#cb21-16" tabindex="-1"></a></span>
-<span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a><span class="co"># Force reinstall backend</span></span>
-<span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a><span class="fu">install_localLLM</span>(<span class="at">force =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="co"># Check installation status</span></span>
+<span id="cb23-2"><a href="#cb23-2" tabindex="-1"></a><span class="fu">lib_is_installed</span>()</span>
+<span id="cb23-3"><a href="#cb23-3" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" tabindex="-1"></a><span class="co"># Check hardware</span></span>
+<span id="cb23-5"><a href="#cb23-5" tabindex="-1"></a><span class="fu">hardware_profile</span>()</span>
+<span id="cb23-6"><a href="#cb23-6" tabindex="-1"></a></span>
+<span id="cb23-7"><a href="#cb23-7" tabindex="-1"></a><span class="co"># List cached models</span></span>
+<span id="cb23-8"><a href="#cb23-8" tabindex="-1"></a><span class="fu">list_cached_models</span>()</span>
+<span id="cb23-9"><a href="#cb23-9" tabindex="-1"></a></span>
+<span id="cb23-10"><a href="#cb23-10" tabindex="-1"></a><span class="co"># List Ollama models</span></span>
+<span id="cb23-11"><a href="#cb23-11" tabindex="-1"></a><span class="fu">list_ollama_models</span>()</span>
+<span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a></span>
+<span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a><span class="co"># Clear model cache</span></span>
+<span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a>cache_dir <span class="ot">&lt;-</span> <span class="fu">file.path</span>(tools<span class="sc">::</span><span class="fu">R_user_dir</span>(<span class="st">&quot;localLLM&quot;</span>, <span class="st">&quot;cache&quot;</span>), <span class="st">&quot;models&quot;</span>)</span>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a><span class="fu">unlink</span>(cache_dir, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a></span>
+<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a><span class="co"># Force reinstall backend (re-runs GPU detection)</span></span>
+<span id="cb23-18"><a href="#cb23-18" tabindex="-1"></a><span class="fu">install_localLLM</span>(<span class="at">force_reinstall =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 </div>
 
 

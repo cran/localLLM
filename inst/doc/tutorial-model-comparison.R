@@ -17,12 +17,14 @@ knitr::opts_chunk$set(
 #      id = "gemma4b",
 #      model_path = "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf",
 #      n_gpu_layers = 999,
+#      n_seq_max = 8L,
 #      generation = list(max_tokens = 15, seed = 92092)
 #    ),
 #    list(
 #      id = "llama3b",
 #      model_path = "Llama-3.2-3B-Instruct-Q5_K_M.gguf",
 #      n_gpu_layers = 999,
+#      n_seq_max = 8L,
 #      generation = list(max_tokens = 15, seed = 92092)
 #    )
 #  )
@@ -73,11 +75,13 @@ knitr::opts_chunk$set(
 
 ## -----------------------------------------------------------------------------
 #  # Cohen's Kappa (pairwise agreement)
+#  # Returns a data frame with columns: model_a, model_b, kappa, observed, expected
 #  print(report$reliability$cohen)
 
 ## -----------------------------------------------------------------------------
 #  # Krippendorff's Alpha (overall agreement)
-#  print(report$reliability$krippendorff)
+#  # Returns a list with: alpha, per_item, category_proportions
+#  print(report$reliability$krippendorff$alpha)
 
 ## -----------------------------------------------------------------------------
 #  # Pre-formatted prompts
@@ -143,9 +147,9 @@ knitr::opts_chunk$set(
 
 ## -----------------------------------------------------------------------------
 #  # Compute reliability metrics
-#  reliability <- intercoder_reliability(annotations$matrix)
+#  reliability <- intercoder_reliability(annotations$annotations)
 #  
-#  print(reliability$cohen)       # Cohen's Kappa
+#  print(reliability$cohen)       # Cohen's Kappa (data frame with model pairs)
 #  print(reliability$krippendorff) # Krippendorff's Alpha
 
 ## -----------------------------------------------------------------------------
@@ -163,12 +167,14 @@ knitr::opts_chunk$set(
 #      id = "gemma4b",
 #      model_path = "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf",
 #      n_gpu_layers = 999,
+#      n_seq_max = 8L,
 #      generation = list(max_tokens = 15, seed = 92092)
 #    ),
 #    list(
 #      id = "llama3b",
 #      model_path = "Llama-3.2-3B-Instruct-Q5_K_M.gguf",
 #      n_gpu_layers = 999,
+#      n_seq_max = 8L,
 #      generation = list(max_tokens = 15, seed = 92092)
 #    )
 #  )
@@ -195,5 +201,5 @@ knitr::opts_chunk$set(
 #  
 #  # 7. Review results
 #  print(report$confusion$vs_gold$gemma4b)
-#  print(report$reliability$krippendorff)
+#  print(report$reliability$krippendorff$alpha)
 

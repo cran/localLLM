@@ -43,7 +43,7 @@ knitr::opts_chunk$set(
 #    ctx,
 #    formatted_prompts,
 #    max_tokens = 50,
-#    progress = TRUE
+#    progress = TRUE  # force progress bar even in non-interactive mode
 #  )
 
 ## -----------------------------------------------------------------------------
@@ -192,4 +192,10 @@ knitr::opts_chunk$set(
 #  predictions <- sapply(results, function(x) trimws(gsub("\\n.*", "", x)))
 #  accuracy <- mean(predictions == ag_news_sample$class)
 #  cat("Accuracy:", round(accuracy * 100, 1), "%\n")
+
+## -----------------------------------------------------------------------------
+#  # Fully silent batch pipeline
+#  model   <- model_load("model.gguf",          verbosity = 0)
+#  ctx     <- context_create(model, n_seq_max = 8, verbosity = 0)
+#  results <- generate_parallel(ctx, prompts, max_tokens = 50, progress = FALSE)
 

@@ -148,6 +148,22 @@ knitr::opts_chunk$set(
 #  ctx <- context_create(model, n_ctx = 8192)
 
 ## -----------------------------------------------------------------------------
+#  # Default: loading is verbose enough to show warnings (verbosity = 1)
+#  model <- model_load("model.gguf")
+#  ctx   <- context_create(model)
+#  
+#  # Generation is silent by default (verbosity = 0)
+#  result <- generate(ctx, prompt)
+#  
+#  # Fully silent session — useful in non-interactive scripts or pipelines
+#  model  <- model_load("model.gguf",  verbosity = 0)
+#  ctx    <- context_create(model,     verbosity = 0)
+#  result <- generate(ctx, prompt,     verbosity = 0)
+#  
+#  # Verbose loading — see full model metadata and memory layout
+#  model <- model_load("model.gguf", verbosity = 2)
+
+## -----------------------------------------------------------------------------
 #  # Check your hardware
 #  hw <- hardware_profile()
 #  print(hw$gpu$name)

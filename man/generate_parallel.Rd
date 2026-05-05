@@ -14,7 +14,8 @@ generate_parallel(
   repeat_last_n = 0L,
   penalty_repeat = 1,
   seed = 1234L,
-  progress = FALSE,
+  progress = interactive(),
+  verbosity = 0L,
   clean = FALSE,
   hash = TRUE
 )
@@ -28,7 +29,8 @@ generate_parallel(
 
 \item{top_k}{Top-k sampling parameter (default: 40). Limits vocabulary to k most likely tokens}
 
-\item{top_p}{Top-p (nucleus) sampling parameter (default: 1.0). Cumulative probability threshold for token selection}
+\item{top_p}{Top-p (nucleus) sampling (default: 1.0). Probability threshold
+for token selection.}
 
 \item{temperature}{Sampling temperature (default: 0.0). Set to 0 for greedy decoding. Higher values increase creativity}
 
@@ -38,8 +40,20 @@ generate_parallel(
 
 \item{seed}{Random seed for reproducible generation (default: 1234). Use positive integers for deterministic output}
 
-\item{progress}{If \code{TRUE}, displays a console progress bar indicating batch
-completion status while generations are running (default: FALSE).}
+\item{progress}{Show a console progress bar while batches run. Defaults to
+\code{interactive()}: visible in interactive sessions, suppressed in
+scripts and \code{R CMD check}.}
+
+\item{verbosity}{Control backend logging during generation (default: 0L).
+Larger numbers print more detail: \code{0} shows only errors, \code{1}
+adds warnings, \code{2} prints informational messages, and \code{3}
+enables the most verbose debug output. Negative values fully suppress
+backend output. Defaults to quiet (\code{0}) so that only the progress
+bar is visible during typical batch runs, matching \code{\link{generate}}.
+This differs from \code{\link{model_load}} and \code{\link{context_create}}
+(default \code{1L}), which run once per session and benefit from warnings
+being visible. Raise to \code{2L} or \code{3L} when debugging llama.cpp
+internals.}
 
 \item{clean}{If TRUE, remove common chat-template control tokens from each generated text (default: FALSE).}
 
@@ -52,4 +66,9 @@ Character vector of generated texts
 }
 \description{
 Generate Text in Parallel for Multiple Prompts
+}
+\details{
+When more prompts are supplied than the context can hold in parallel
+  (`n_seq_max - 1`), the function automatically processes them in sequential
+  batches while preserving the original ordering of results.
 }

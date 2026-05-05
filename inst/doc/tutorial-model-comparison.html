@@ -360,15 +360,17 @@ and returns organized results:</p>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>    <span class="at">id =</span> <span class="st">&quot;gemma4b&quot;</span>,</span>
 <span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>    <span class="at">model_path =</span> <span class="st">&quot;https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf&quot;</span>,</span>
 <span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>    <span class="at">n_gpu_layers =</span> <span class="dv">999</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>    <span class="at">generation =</span> <span class="fu">list</span>(<span class="at">max_tokens =</span> <span class="dv">15</span>, <span class="at">seed =</span> <span class="dv">92092</span>)</span>
-<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>  ),</span>
-<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>  <span class="fu">list</span>(</span>
-<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>    <span class="at">id =</span> <span class="st">&quot;llama3b&quot;</span>,</span>
-<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>    <span class="at">model_path =</span> <span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>,</span>
-<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>    <span class="at">n_gpu_layers =</span> <span class="dv">999</span>,</span>
-<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>    <span class="at">generation =</span> <span class="fu">list</span>(<span class="at">max_tokens =</span> <span class="dv">15</span>, <span class="at">seed =</span> <span class="dv">92092</span>)</span>
-<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>  )</span>
-<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>)</span></code></pre></div>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>    <span class="at">n_seq_max =</span> <span class="dv">8</span><span class="dt">L</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>    <span class="at">generation =</span> <span class="fu">list</span>(<span class="at">max_tokens =</span> <span class="dv">15</span>, <span class="at">seed =</span> <span class="dv">92092</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>  ),</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>  <span class="fu">list</span>(</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>    <span class="at">id =</span> <span class="st">&quot;llama3b&quot;</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>    <span class="at">model_path =</span> <span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>    <span class="at">n_gpu_layers =</span> <span class="dv">999</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>    <span class="at">n_seq_max =</span> <span class="dv">8</span><span class="dt">L</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>    <span class="at">generation =</span> <span class="fu">list</span>(<span class="at">max_tokens =</span> <span class="dv">15</span>, <span class="at">seed =</span> <span class="dv">92092</span>)</span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>  )</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>)</span></code></pre></div>
 </div>
 <div id="creating-structured-prompts" class="section level2">
 <h2>Creating Structured Prompts</h2>
@@ -454,11 +456,13 @@ labels:</p>
 <div id="reliability-metrics" class="section level3">
 <h3>Reliability Metrics</h3>
 <div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="co"># Cohen&#39;s Kappa (pairwise agreement)</span></span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="fu">print</span>(report<span class="sc">$</span>reliability<span class="sc">$</span>cohen)</span></code></pre></div>
-<pre><code>#&gt;                        kappa
-#&gt; gemma4b vs llama3b     0.89</code></pre>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># Returns a data frame with columns: model_a, model_b, kappa, observed, expected</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="fu">print</span>(report<span class="sc">$</span>reliability<span class="sc">$</span>cohen)</span></code></pre></div>
+<pre><code>#&gt;   model_a model_b kappa  observed  expected
+#&gt; 1 gemma4b  llama3b  0.89    ...       ...</code></pre>
 <div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="co"># Krippendorff&#39;s Alpha (overall agreement)</span></span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="fu">print</span>(report<span class="sc">$</span>reliability<span class="sc">$</span>krippendorff)</span></code></pre></div>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="co"># Returns a list with: alpha, per_item, category_proportions</span></span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a><span class="fu">print</span>(report<span class="sc">$</span>reliability<span class="sc">$</span>krippendorff<span class="sc">$</span>alpha)</span></code></pre></div>
 <pre><code>#&gt; [1] 0.87</code></pre>
 </div>
 </div>
@@ -541,9 +545,9 @@ functions:</p>
 <div id="intercoder-reliability" class="section level3">
 <h3>Intercoder Reliability</h3>
 <div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="co"># Compute reliability metrics</span></span>
-<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>reliability <span class="ot">&lt;-</span> <span class="fu">intercoder_reliability</span>(annotations<span class="sc">$</span>matrix)</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>reliability <span class="ot">&lt;-</span> <span class="fu">intercoder_reliability</span>(annotations<span class="sc">$</span>annotations)</span>
 <span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a></span>
-<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a><span class="fu">print</span>(reliability<span class="sc">$</span>cohen)       <span class="co"># Cohen&#39;s Kappa</span></span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a><span class="fu">print</span>(reliability<span class="sc">$</span>cohen)       <span class="co"># Cohen&#39;s Kappa (data frame with model pairs)</span></span>
 <span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a><span class="fu">print</span>(reliability<span class="sc">$</span>krippendorff) <span class="co"># Krippendorff&#39;s Alpha</span></span></code></pre></div>
 </div>
 </div>
@@ -563,39 +567,41 @@ functions:</p>
 <span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a>    <span class="at">id =</span> <span class="st">&quot;gemma4b&quot;</span>,</span>
 <span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a>    <span class="at">model_path =</span> <span class="st">&quot;https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf&quot;</span>,</span>
 <span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a>    <span class="at">n_gpu_layers =</span> <span class="dv">999</span>,</span>
-<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a>    <span class="at">generation =</span> <span class="fu">list</span>(<span class="at">max_tokens =</span> <span class="dv">15</span>, <span class="at">seed =</span> <span class="dv">92092</span>)</span>
-<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a>  ),</span>
-<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a>  <span class="fu">list</span>(</span>
-<span id="cb23-18"><a href="#cb23-18" tabindex="-1"></a>    <span class="at">id =</span> <span class="st">&quot;llama3b&quot;</span>,</span>
-<span id="cb23-19"><a href="#cb23-19" tabindex="-1"></a>    <span class="at">model_path =</span> <span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>,</span>
-<span id="cb23-20"><a href="#cb23-20" tabindex="-1"></a>    <span class="at">n_gpu_layers =</span> <span class="dv">999</span>,</span>
-<span id="cb23-21"><a href="#cb23-21" tabindex="-1"></a>    <span class="at">generation =</span> <span class="fu">list</span>(<span class="at">max_tokens =</span> <span class="dv">15</span>, <span class="at">seed =</span> <span class="dv">92092</span>)</span>
-<span id="cb23-22"><a href="#cb23-22" tabindex="-1"></a>  )</span>
-<span id="cb23-23"><a href="#cb23-23" tabindex="-1"></a>)</span>
-<span id="cb23-24"><a href="#cb23-24" tabindex="-1"></a></span>
-<span id="cb23-25"><a href="#cb23-25" tabindex="-1"></a><span class="co"># 4. Create prompts</span></span>
-<span id="cb23-26"><a href="#cb23-26" tabindex="-1"></a>template_builder <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb23-27"><a href="#cb23-27" tabindex="-1"></a>  <span class="at">sample_id =</span> <span class="fu">seq_len</span>(<span class="fu">nrow</span>(ag_news_sample)),</span>
-<span id="cb23-28"><a href="#cb23-28" tabindex="-1"></a>  <span class="st">&quot;Annotation Task&quot;</span> <span class="ot">=</span> <span class="st">&quot;Classify into: World|Sports|Business|Sci/Tech&quot;</span>,</span>
-<span id="cb23-29"><a href="#cb23-29" tabindex="-1"></a>  <span class="st">&quot;Target Text&quot;</span> <span class="ot">=</span> ag_news_sample<span class="sc">$</span>title,</span>
-<span id="cb23-30"><a href="#cb23-30" tabindex="-1"></a>  <span class="st">&quot;Output Format&quot;</span> <span class="ot">=</span> <span class="st">&quot;One word only&quot;</span></span>
-<span id="cb23-31"><a href="#cb23-31" tabindex="-1"></a>)</span>
-<span id="cb23-32"><a href="#cb23-32" tabindex="-1"></a></span>
-<span id="cb23-33"><a href="#cb23-33" tabindex="-1"></a><span class="co"># 5. Run comparison</span></span>
-<span id="cb23-34"><a href="#cb23-34" tabindex="-1"></a>annotations <span class="ot">&lt;-</span> <span class="fu">explore</span>(</span>
-<span id="cb23-35"><a href="#cb23-35" tabindex="-1"></a>  <span class="at">models =</span> models,</span>
-<span id="cb23-36"><a href="#cb23-36" tabindex="-1"></a>  <span class="at">prompts =</span> template_builder,</span>
-<span id="cb23-37"><a href="#cb23-37" tabindex="-1"></a>  <span class="at">batch_size =</span> <span class="dv">25</span>,</span>
-<span id="cb23-38"><a href="#cb23-38" tabindex="-1"></a>  <span class="at">engine =</span> <span class="st">&quot;parallel&quot;</span>,</span>
-<span id="cb23-39"><a href="#cb23-39" tabindex="-1"></a>  <span class="at">clean =</span> <span class="cn">TRUE</span></span>
-<span id="cb23-40"><a href="#cb23-40" tabindex="-1"></a>)</span>
-<span id="cb23-41"><a href="#cb23-41" tabindex="-1"></a></span>
-<span id="cb23-42"><a href="#cb23-42" tabindex="-1"></a><span class="co"># 6. Validate</span></span>
-<span id="cb23-43"><a href="#cb23-43" tabindex="-1"></a>report <span class="ot">&lt;-</span> <span class="fu">validate</span>(annotations, <span class="at">gold =</span> ag_news_sample<span class="sc">$</span>class)</span>
-<span id="cb23-44"><a href="#cb23-44" tabindex="-1"></a></span>
-<span id="cb23-45"><a href="#cb23-45" tabindex="-1"></a><span class="co"># 7. Review results</span></span>
-<span id="cb23-46"><a href="#cb23-46" tabindex="-1"></a><span class="fu">print</span>(report<span class="sc">$</span>confusion<span class="sc">$</span>vs_gold<span class="sc">$</span>gemma4b)</span>
-<span id="cb23-47"><a href="#cb23-47" tabindex="-1"></a><span class="fu">print</span>(report<span class="sc">$</span>reliability<span class="sc">$</span>krippendorff)</span></code></pre></div>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a>    <span class="at">n_seq_max =</span> <span class="dv">8</span><span class="dt">L</span>,</span>
+<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a>    <span class="at">generation =</span> <span class="fu">list</span>(<span class="at">max_tokens =</span> <span class="dv">15</span>, <span class="at">seed =</span> <span class="dv">92092</span>)</span>
+<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a>  ),</span>
+<span id="cb23-18"><a href="#cb23-18" tabindex="-1"></a>  <span class="fu">list</span>(</span>
+<span id="cb23-19"><a href="#cb23-19" tabindex="-1"></a>    <span class="at">id =</span> <span class="st">&quot;llama3b&quot;</span>,</span>
+<span id="cb23-20"><a href="#cb23-20" tabindex="-1"></a>    <span class="at">model_path =</span> <span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>,</span>
+<span id="cb23-21"><a href="#cb23-21" tabindex="-1"></a>    <span class="at">n_gpu_layers =</span> <span class="dv">999</span>,</span>
+<span id="cb23-22"><a href="#cb23-22" tabindex="-1"></a>    <span class="at">n_seq_max =</span> <span class="dv">8</span><span class="dt">L</span>,</span>
+<span id="cb23-23"><a href="#cb23-23" tabindex="-1"></a>    <span class="at">generation =</span> <span class="fu">list</span>(<span class="at">max_tokens =</span> <span class="dv">15</span>, <span class="at">seed =</span> <span class="dv">92092</span>)</span>
+<span id="cb23-24"><a href="#cb23-24" tabindex="-1"></a>  )</span>
+<span id="cb23-25"><a href="#cb23-25" tabindex="-1"></a>)</span>
+<span id="cb23-26"><a href="#cb23-26" tabindex="-1"></a></span>
+<span id="cb23-27"><a href="#cb23-27" tabindex="-1"></a><span class="co"># 4. Create prompts</span></span>
+<span id="cb23-28"><a href="#cb23-28" tabindex="-1"></a>template_builder <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb23-29"><a href="#cb23-29" tabindex="-1"></a>  <span class="at">sample_id =</span> <span class="fu">seq_len</span>(<span class="fu">nrow</span>(ag_news_sample)),</span>
+<span id="cb23-30"><a href="#cb23-30" tabindex="-1"></a>  <span class="st">&quot;Annotation Task&quot;</span> <span class="ot">=</span> <span class="st">&quot;Classify into: World|Sports|Business|Sci/Tech&quot;</span>,</span>
+<span id="cb23-31"><a href="#cb23-31" tabindex="-1"></a>  <span class="st">&quot;Target Text&quot;</span> <span class="ot">=</span> ag_news_sample<span class="sc">$</span>title,</span>
+<span id="cb23-32"><a href="#cb23-32" tabindex="-1"></a>  <span class="st">&quot;Output Format&quot;</span> <span class="ot">=</span> <span class="st">&quot;One word only&quot;</span></span>
+<span id="cb23-33"><a href="#cb23-33" tabindex="-1"></a>)</span>
+<span id="cb23-34"><a href="#cb23-34" tabindex="-1"></a></span>
+<span id="cb23-35"><a href="#cb23-35" tabindex="-1"></a><span class="co"># 5. Run comparison</span></span>
+<span id="cb23-36"><a href="#cb23-36" tabindex="-1"></a>annotations <span class="ot">&lt;-</span> <span class="fu">explore</span>(</span>
+<span id="cb23-37"><a href="#cb23-37" tabindex="-1"></a>  <span class="at">models =</span> models,</span>
+<span id="cb23-38"><a href="#cb23-38" tabindex="-1"></a>  <span class="at">prompts =</span> template_builder,</span>
+<span id="cb23-39"><a href="#cb23-39" tabindex="-1"></a>  <span class="at">batch_size =</span> <span class="dv">25</span>,</span>
+<span id="cb23-40"><a href="#cb23-40" tabindex="-1"></a>  <span class="at">engine =</span> <span class="st">&quot;parallel&quot;</span>,</span>
+<span id="cb23-41"><a href="#cb23-41" tabindex="-1"></a>  <span class="at">clean =</span> <span class="cn">TRUE</span></span>
+<span id="cb23-42"><a href="#cb23-42" tabindex="-1"></a>)</span>
+<span id="cb23-43"><a href="#cb23-43" tabindex="-1"></a></span>
+<span id="cb23-44"><a href="#cb23-44" tabindex="-1"></a><span class="co"># 6. Validate</span></span>
+<span id="cb23-45"><a href="#cb23-45" tabindex="-1"></a>report <span class="ot">&lt;-</span> <span class="fu">validate</span>(annotations, <span class="at">gold =</span> ag_news_sample<span class="sc">$</span>class)</span>
+<span id="cb23-46"><a href="#cb23-46" tabindex="-1"></a></span>
+<span id="cb23-47"><a href="#cb23-47" tabindex="-1"></a><span class="co"># 7. Review results</span></span>
+<span id="cb23-48"><a href="#cb23-48" tabindex="-1"></a><span class="fu">print</span>(report<span class="sc">$</span>confusion<span class="sc">$</span>vs_gold<span class="sc">$</span>gemma4b)</span>
+<span id="cb23-49"><a href="#cb23-49" tabindex="-1"></a><span class="fu">print</span>(report<span class="sc">$</span>reliability<span class="sc">$</span>krippendorff<span class="sc">$</span>alpha)</span></code></pre></div>
 </div>
 <div id="summary" class="section level2">
 <h2>Summary</h2>

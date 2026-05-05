@@ -21,7 +21,7 @@ When processing large datasets, parallel generation can significantly reduce exe
 
 Sequential processing with a for-loop processes one prompt at a time. Parallel processing batches multiple prompts together, sharing computation and reducing overhead.
 
-In benchmarks, `generate_parallel()` typically completes in **~65% of the time** compared to sequential `generate()` calls.
+In benchmarks, `generate_parallel()` typically completes in **60–70% of the time** compared to sequential `generate()` calls (1.3×–1.7× speedup depending on model size).
 
 ## Using generate_parallel()
 
@@ -69,14 +69,14 @@ print(results)
 
 ### Progress Tracking
 
-For large batches, enable progress reporting:
+Progress reporting is enabled by default in interactive sessions (`progress = interactive()`). To force it in non-interactive scripts, set `progress = TRUE` explicitly:
 
 ```{r}
 results <- generate_parallel(
   ctx,
   formatted_prompts,
   max_tokens = 50,
-  progress = TRUE
+  progress = TRUE  # force progress bar even in non-interactive mode
 )
 ```
 
@@ -165,7 +165,7 @@ system.time({
 
 ```
 #>    user  system elapsed
-#>  45.32    2.15   48.23
+#>   0.62    0.08   41.55
 ```
 
 ### Parallel
@@ -186,10 +186,39 @@ system.time({
 
 ```
 #>    user  system elapsed
-#>  28.45    1.82   31.12
+#>   0.38    0.04   24.08
 ```
 
-**Result**: ~35% faster with parallel processing.
+**Result**: ~42% faster with parallel processing (1.73×).
+
+### Benchmark: Multiple Models
+
+Tested on Apple M3 Pro (18 GB unified memory), 100 AG News classification prompts,
+`ctx_size = 512`, `max_tokens = 50`, `n_seq_max = 10`:
+
+| Model | Sequential | Parallel (10×) | Speedup |
+|---|---|---|---|
+| Llama-3.2-3B-Instruct-Q5_K_M | 41.6 sec | 24.1 sec | **1.73×** |
+| Gemma-3-4B-it-QAT-Q5_K_M | 41.3 sec | 30.0 sec | 1.38× |
+| OLMo-3-7B-Instruct-Q5_K_M | 61.5 sec | 43.3 sec | 1.42× |
+| Gemma-4-26B-A4B-it-IQ2_XXS | 69.2 sec | 52.9 sec | 1.31× |
+
+On Apple Silicon (M3 Pro), smaller models tend to show **higher parallel speedup** than
+larger ones. The GPU is underutilised during single-sequence inference for small models,
+so batching provides more headroom. Larger models approach GPU saturation even at
+`n_seq_max = 1`, leaving less room for parallel gains.
+
+> **Note on reasoning models**: DeepSeek-R1 and similar reasoning models (QwQ, Gemma 4)
+> output a thinking block before the final answer (e.g. `<think>...</think>answer`).
+> For classification tasks, strip the thinking section before evaluating predictions:
+>
+> ```r
+> clean_pred <- function(x) {
+>   # Remove thinking block, keep only text after closing tag
+>   x <- gsub("<think>.*?</think>", "", x, perl = TRUE)
+>   trimws(gsub("\n.*", "", trimws(x)))
+> }
+> ```
 
 ## Using quick_llama() for Batches
 
@@ -309,9 +338,17 @@ cat("Accuracy:", round(accuracy * 100, 1), "%\n")
 
 1. **Set `n_seq_max`** when creating context for parallel use
 2. **Scale `n_ctx`** with `n_seq_max` to give each sequence enough space
-3. **Enable `progress = TRUE`** for large batches
+3. **Progress is shown automatically** in interactive sessions; set `progress = TRUE` to force it in scripts
 4. **Use `clean = TRUE`** to automatically strip control tokens
 5. **Set consistent `seed`** for reproducibility across batches
+6. **Set `verbosity = 0`** in scripts and automated pipelines to prevent backend log lines from appearing in output files or `R CMD check` output. `generate_parallel()` already defaults to `verbosity = 0`; suppress loading output by passing `verbosity = 0` to `model_load()` and `context_create()` as well:
+
+```{r}
+# Fully silent batch pipeline
+model   <- model_load("model.gguf",          verbosity = 0)
+ctx     <- context_create(model, n_seq_max = 8, verbosity = 0)
+results <- generate_parallel(ctx, prompts, max_tokens = 50, progress = FALSE)
+```
 
 ## Next Steps
 

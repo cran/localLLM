@@ -36,7 +36,8 @@ This downloads the platform-specific backend library. You only need to do this o
 
 **Solution**: Check your platform is supported:
 - Windows (x86-64)
-- macOS (ARM64 / Apple Silicon)
+- macOS (Apple Silicon / ARM64)
+- macOS (Intel / x86-64)
 - Linux (x86-64)
 
 If you're on an unsupported platform, you may need to compile llama.cpp manually.
@@ -49,7 +50,7 @@ If you're on an unsupported platform, you may need to compile llama.cpp manually
 
 ```{r}
 # Force reinstall
-install_localLLM(force = TRUE)
+install_localLLM(force_reinstall = TRUE)
 
 # Verify installation
 lib_is_installed()
@@ -130,7 +131,7 @@ model <- model_load("https://huggingface.co/private/model.gguf")
 
 ```{r}
 hw <- hardware_profile()
-cat("Available RAM:", hw$ram_gb, "GB\n")
+cat("Available RAM:", round(hw$ram_total / 1e9, 1), "GB\n")
 ```
 
 ### "Memory check failed" warning
@@ -173,14 +174,25 @@ print(hw$gpu)
 ```
 
 If no GPU is listed, the backend may not support your GPU. Currently supported:
-- NVIDIA GPUs (via CUDA)
-- Apple Silicon (Metal)
 
-### "CUDA out of memory" error
+| Platform | GPU backend | Supported hardware |
+|----------|-------------|-------------------|
+| macOS (Apple Silicon) | Metal | All Apple Silicon (M1 and later) |
+| macOS (Intel) | Metal | Intel Macs running macOS 12+ |
+| Windows (x86-64) | Vulkan | NVIDIA GeForce 10xx+, AMD RX 400+, Intel Arc |
+| Linux (x86-64) | Vulkan | NVIDIA GeForce 10xx+, AMD RX 400+, Intel Arc |
+
+If your GPU is not listed, install with `force_cpu = TRUE` to use the CPU build:
+
+```{r}
+install_localLLM(force_cpu = TRUE)
+```
+
+### GPU runs out of memory
 
 **Problem**: GPU runs out of memory during generation.
 
-**Solution**: Reduce GPU layer count:
+**Solution**: Reduce GPU layer count to split the model between GPU and CPU:
 
 ```{r}
 # Offload fewer layers to GPU
@@ -190,6 +202,27 @@ model <- model_load("model.gguf", n_gpu_layers = 20)
 ---
 
 ## Generation Issues
+
+### Backend prints too many log messages
+
+**Problem**: `model_load()` or `context_create()` print hardware information, model metadata, or other log lines that clutter the console or appear in knitted documents and `R CMD check` output.
+
+**Solution**: Reduce the verbosity level:
+
+```{r}
+# Default (verbosity = 1): warnings only — hardware limits, context size notes
+model <- model_load("model.gguf")
+
+# Fully silent loading
+model <- model_load("model.gguf",  verbosity = 0)
+ctx   <- context_create(model,     verbosity = 0)
+```
+
+Verbosity levels: `0` = silent, `1` = warnings only (default for `model_load` and `context_create`), `2` = informational messages, `3` = full debug output. `generate()` and `generate_parallel()` already default to `verbosity = 0`.
+
+Note: `backend_init()` always prints one line (`localLLM backend library loaded successfully.`) regardless of verbosity; this cannot be suppressed.
+
+---
 
 ### Output is garbled or nonsensical
 
@@ -315,7 +348,7 @@ model <- model_load("ollama:model-name")
 | "Backend library is not loaded" | Backend not installed | Run `install_localLLM()` |
 | "Invalid model handle" | Model was freed/invalid | Reload the model |
 | "Invalid context handle" | Context was freed/invalid | Recreate the context |
-| "Failed to open library" | Backend installation issue | Reinstall with `install_localLLM(force = TRUE)` |
+| "Failed to open library" | Backend installation issue | Reinstall with `install_localLLM(force_reinstall = TRUE)` |
 | "Download timeout" | Network issue or lock file | Clear cache and retry |
 
 ---
@@ -352,6 +385,6 @@ list_ollama_models()
 cache_dir <- file.path(tools::R_user_dir("localLLM", "cache"), "models")
 unlink(cache_dir, recursive = TRUE)
 
-# Force reinstall backend
-install_localLLM(force = TRUE)
+# Force reinstall backend (re-runs GPU detection)
+install_localLLM(force_reinstall = TRUE)
 ```

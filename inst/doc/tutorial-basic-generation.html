@@ -378,7 +378,12 @@ context</li>
 <span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>)</span></code></pre></div>
 <div id="model-loading-options" class="section level3">
 <h3>Model Loading Options</h3>
-<table>
+<table style="width:100%;">
+<colgroup>
+<col width="33%" />
+<col width="27%" />
+<col width="39%" />
+</colgroup>
 <thead>
 <tr class="header">
 <th>Parameter</th>
@@ -407,6 +412,11 @@ context</li>
 <td>FALSE</td>
 <td>Lock model in RAM (prevents swapping)</td>
 </tr>
+<tr class="odd">
+<td><code>verbosity</code></td>
+<td>1</td>
+<td>Logging level (0=silent, 1=warnings, 2=info, 3=debug)</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -426,7 +436,12 @@ context</li>
 <span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>)</span></code></pre></div>
 <div id="context-parameters" class="section level3">
 <h3>Context Parameters</h3>
-<table>
+<table style="width:100%;">
+<colgroup>
+<col width="33%" />
+<col width="27%" />
+<col width="39%" />
+</colgroup>
 <thead>
 <tr class="header">
 <th>Parameter</th>
@@ -453,7 +468,7 @@ context</li>
 <tr class="even">
 <td><code>verbosity</code></td>
 <td>1</td>
-<td>Logging level (0=quiet, 3=verbose)</td>
+<td>Logging level (0=silent, 1=warnings, 2=info, 3=debug)</td>
 </tr>
 </tbody>
 </table>
@@ -519,7 +534,12 @@ prompt:</p>
 <span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="at">penalty_repeat =</span> <span class="fl">1.0</span>,    <span class="co"># Repetition penalty (&gt;1 discourages)</span></span>
 <span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">1234</span>              <span class="co"># Random seed for reproducibility</span></span>
 <span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>)</span></code></pre></div>
-<table>
+<table style="width:100%;">
+<colgroup>
+<col width="33%" />
+<col width="27%" />
+<col width="39%" />
+</colgroup>
 <thead>
 <tr class="header">
 <th>Parameter</th>
@@ -562,6 +582,11 @@ prompt:</p>
 <td><code>seed</code></td>
 <td>1234</td>
 <td>Random seed</td>
+</tr>
+<tr class="even">
+<td><code>verbosity</code></td>
+<td>0</td>
+<td>Logging level (0=silent, 1=warnings, 2=info, 3=debug)</td>
 </tr>
 </tbody>
 </table>
@@ -669,15 +694,73 @@ needs:</p>
 <span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a><span class="co"># For document analysis</span></span>
 <span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">8192</span>)</span></code></pre></div>
 </div>
-<div id="use-gpu-when-available" class="section level3">
-<h3>3. Use GPU When Available</h3>
-<p>GPU acceleration provides 5-10x speedup:</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="co"># Check your hardware</span></span>
-<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
-<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="fu">print</span>(hw<span class="sc">$</span>gpu<span class="sc">$</span>name)</span>
+<div id="controlling-log-output-verbosity" class="section level3">
+<h3>3. Controlling Log Output (verbosity)</h3>
+<p>All core functions accept a <code>verbosity</code> parameter that
+controls how much the backend prints to the console:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Level</th>
+<th>What you see</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>0</code></td>
+<td>Nothing — completely silent</td>
+</tr>
+<tr class="even">
+<td><code>1</code></td>
+<td>Warnings only (hardware limitations, context size notes)</td>
+</tr>
+<tr class="odd">
+<td><code>2</code></td>
+<td>Informational messages (model metadata, memory allocation)</td>
+</tr>
+<tr class="even">
+<td><code>3</code></td>
+<td>Full debug output</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Default levels reflect typical usage patterns:</strong></p>
+<ul>
+<li><code>model_load()</code> and <code>context_create()</code> default
+to <code>verbosity = 1</code> — they run once per session, so hardware
+warnings and memory notes should be visible.</li>
+<li><code>generate()</code> and <code>generate_parallel()</code> default
+to <code>verbosity = 0</code> — they are called in loops or on large
+batches, where per-call log lines would be noisy.</li>
+</ul>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="co"># Default: loading is verbose enough to show warnings (verbosity = 1)</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>ctx   <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model)</span>
 <span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a></span>
-<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># Enable GPU</span></span>
-<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span></code></pre></div>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># Generation is silent by default (verbosity = 0)</span></span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, prompt)</span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a></span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="co"># Fully silent session — useful in non-interactive scripts or pipelines</span></span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a>model  <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>,  <span class="at">verbosity =</span> <span class="dv">0</span>)</span>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a>ctx    <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model,     <span class="at">verbosity =</span> <span class="dv">0</span>)</span>
+<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">generate</span>(ctx, prompt,     <span class="at">verbosity =</span> <span class="dv">0</span>)</span>
+<span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a></span>
+<span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co"># Verbose loading — see full model metadata and memory layout</span></span>
+<span id="cb17-14"><a href="#cb17-14" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>, <span class="at">verbosity =</span> <span class="dv">2</span>)</span></code></pre></div>
+<p>Note: <code>backend_init()</code> always prints one line
+(<code>localLLM backend library loaded successfully.</code>) regardless
+of verbosity. This is a one-time initialisation message from the R layer
+and cannot be suppressed.</p>
+</div>
+<div id="use-gpu-when-available" class="section level3">
+<h3>4. Use GPU When Available</h3>
+<p>GPU acceleration provides 5-10x speedup:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="co"># Check your hardware</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a><span class="fu">print</span>(hw<span class="sc">$</span>gpu<span class="sc">$</span>name)</span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a></span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="co"># Enable GPU</span></span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span></code></pre></div>
 </div>
 </div>
 <div id="next-steps" class="section level2">

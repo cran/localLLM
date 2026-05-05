@@ -11,7 +11,7 @@ knitr::opts_chunk$set(
 
 ## -----------------------------------------------------------------------------
 #  # Force reinstall
-#  install_localLLM(force = TRUE)
+#  install_localLLM(force_reinstall = TRUE)
 #  
 #  # Verify installation
 #  lib_is_installed()
@@ -38,7 +38,7 @@ knitr::opts_chunk$set(
 
 ## -----------------------------------------------------------------------------
 #  hw <- hardware_profile()
-#  cat("Available RAM:", hw$ram_gb, "GB\n")
+#  cat("Available RAM:", round(hw$ram_total / 1e9, 1), "GB\n")
 
 ## -----------------------------------------------------------------------------
 #  ctx <- context_create(model, n_ctx = 512)  # Smaller context
@@ -52,8 +52,19 @@ knitr::opts_chunk$set(
 #  print(hw$gpu)
 
 ## -----------------------------------------------------------------------------
+#  install_localLLM(force_cpu = TRUE)
+
+## -----------------------------------------------------------------------------
 #  # Offload fewer layers to GPU
 #  model <- model_load("model.gguf", n_gpu_layers = 20)
+
+## -----------------------------------------------------------------------------
+#  # Default (verbosity = 1): warnings only — hardware limits, context size notes
+#  model <- model_load("model.gguf")
+#  
+#  # Fully silent loading
+#  model <- model_load("model.gguf",  verbosity = 0)
+#  ctx   <- context_create(model,     verbosity = 0)
 
 ## -----------------------------------------------------------------------------
 #  messages <- list(
@@ -113,6 +124,6 @@ knitr::opts_chunk$set(
 #  cache_dir <- file.path(tools::R_user_dir("localLLM", "cache"), "models")
 #  unlink(cache_dir, recursive = TRUE)
 #  
-#  # Force reinstall backend
-#  install_localLLM(force = TRUE)
+#  # Force reinstall backend (re-runs GPU detection)
+#  install_localLLM(force_reinstall = TRUE)
 

@@ -20,7 +20,6 @@ quick_llama(
   system_prompt = "You are a helpful assistant.",
   auto_format = TRUE,
   chat_template = NULL,
-  stream = FALSE,
   seed = 1234L,
   progress = interactive(),
   clean = FALSE,
@@ -62,12 +61,10 @@ output.}
 
 \item{chat_template}{Custom chat template to use (default: NULL uses model's built-in template)}
 
-\item{stream}{Whether to stream output (default: auto-detect based on interactive())}
-
 \item{seed}{Random seed for reproducibility (default: 1234)}
 
-\item{progress}{Show a console progress bar when running parallel generation.
-Default: \code{interactive()}. Has no effect for single-prompt runs.}
+\item{progress}{Show a console progress bar during parallel generation.
+Defaults to \code{interactive()}. Has no effect for single-prompt runs.}
 
 \item{clean}{Whether to strip chat-template control tokens from the generated output.
 Defaults to \code{FALSE}.}
@@ -96,8 +93,9 @@ raw_response <- quick_llama("Complete this: The capital of France is",
                            auto_format = FALSE)
 
 # Custom system prompt
-code_response <- quick_llama("Write a Python hello world program",
-                            system_prompt = "You are a Python programming expert.")
+code_response <- quick_llama(
+  "Write a Python hello world program",
+  system_prompt = "You are a Python programming expert.")
 
 # Creative writing with higher temperature
 creative_response <- quick_llama("Tell me a story",

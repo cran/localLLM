@@ -12,6 +12,12 @@ knitr::opts_chunk$set(
 ## -----------------------------------------------------------------------------
 #  library(localLLM)
 #  install_localLLM()
+#  
+#  # Force CPU build even when a GPU is detected
+#  install_localLLM(force_cpu = TRUE)
+#  
+#  # Reinstall after adding a GPU driver (re-runs detection)
+#  install_localLLM(force_reinstall = TRUE)
 
 ## -----------------------------------------------------------------------------
 #  library(localLLM)
@@ -64,6 +70,10 @@ knitr::opts_chunk$set(
 #  # List all cached models
 #  cached <- list_cached_models()
 #  print(cached)
+
+## -----------------------------------------------------------------------------
+#  # Delete a cached model by name
+#  file.remove(cached$path[cached$name == "Llama-3.2-3B-Instruct-Q5_K_M.gguf"])
 
 ## -----------------------------------------------------------------------------
 #  response <- quick_llama(

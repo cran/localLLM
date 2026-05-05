@@ -349,8 +349,9 @@ strategies with localLLM.</p>
 Parallel processing batches multiple prompts together, sharing
 computation and reducing overhead.</p>
 <p>In benchmarks, <code>generate_parallel()</code> typically completes
-in <strong>~65% of the time</strong> compared to sequential
-<code>generate()</code> calls.</p>
+in <strong>60–70% of the time</strong> compared to sequential
+<code>generate()</code> calls (1.3×–1.7× speedup depending on model
+size).</p>
 </div>
 <div id="using-generate_parallel" class="section level2">
 <h2>Using generate_parallel()</h2>
@@ -393,12 +394,14 @@ in <strong>~65% of the time</strong> compared to sequential
 </div>
 <div id="progress-tracking" class="section level3">
 <h3>Progress Tracking</h3>
-<p>For large batches, enable progress reporting:</p>
+<p>Progress reporting is enabled by default in interactive sessions
+(<code>progress = interactive()</code>). To force it in non-interactive
+scripts, set <code>progress = TRUE</code> explicitly:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  ctx,</span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  formatted_prompts,</span>
 <span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">50</span>,</span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">TRUE</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">TRUE</span>  <span class="co"># force progress bar even in non-interactive mode</span></span>
 <span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>)</span></code></pre></div>
 <pre><code>#&gt; Processing 100 prompts...
 #&gt; [##########----------] 50%
@@ -474,7 +477,7 @@ in <strong>~65% of the time</strong> compared to sequential
 <span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>  }</span>
 <span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>})</span></code></pre></div>
 <pre><code>#&gt;    user  system elapsed
-#&gt;  45.32    2.15   48.23</code></pre>
+#&gt;   0.62    0.08   41.55</code></pre>
 </div>
 <div id="parallel" class="section level3">
 <h3>Parallel</h3>
@@ -490,45 +493,105 @@ in <strong>~65% of the time</strong> compared to sequential
 <span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>  )</span>
 <span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>})</span></code></pre></div>
 <pre><code>#&gt;    user  system elapsed
-#&gt;  28.45    1.82   31.12</code></pre>
-<p><strong>Result</strong>: ~35% faster with parallel processing.</p>
+#&gt;   0.38    0.04   24.08</code></pre>
+<p><strong>Result</strong>: ~42% faster with parallel processing
+(1.73×).</p>
+</div>
+<div id="benchmark-multiple-models" class="section level3">
+<h3>Benchmark: Multiple Models</h3>
+<p>Tested on Apple M3 Pro (18 GB unified memory), 100 AG News
+classification prompts, <code>ctx_size = 512</code>,
+<code>max_tokens = 50</code>, <code>n_seq_max = 10</code>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Sequential</th>
+<th>Parallel (10×)</th>
+<th>Speedup</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Llama-3.2-3B-Instruct-Q5_K_M</td>
+<td>41.6 sec</td>
+<td>24.1 sec</td>
+<td><strong>1.73×</strong></td>
+</tr>
+<tr class="even">
+<td>Gemma-3-4B-it-QAT-Q5_K_M</td>
+<td>41.3 sec</td>
+<td>30.0 sec</td>
+<td>1.38×</td>
+</tr>
+<tr class="odd">
+<td>OLMo-3-7B-Instruct-Q5_K_M</td>
+<td>61.5 sec</td>
+<td>43.3 sec</td>
+<td>1.42×</td>
+</tr>
+<tr class="even">
+<td>Gemma-4-26B-A4B-it-IQ2_XXS</td>
+<td>69.2 sec</td>
+<td>52.9 sec</td>
+<td>1.31×</td>
+</tr>
+</tbody>
+</table>
+<p>On Apple Silicon (M3 Pro), smaller models tend to show <strong>higher
+parallel speedup</strong> than larger ones. The GPU is underutilised
+during single-sequence inference for small models, so batching provides
+more headroom. Larger models approach GPU saturation even at
+<code>n_seq_max = 1</code>, leaving less room for parallel gains.</p>
+<blockquote>
+<p><strong>Note on reasoning models</strong>: DeepSeek-R1 and similar
+reasoning models (QwQ, Gemma 4) output a thinking block before the final
+answer (e.g. <code>&lt;think&gt;...&lt;/think&gt;answer</code>). For
+classification tasks, strip the thinking section before evaluating
+predictions:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>clean_pred <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>  <span class="co"># Remove thinking block, keep only text after closing tag</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  x <span class="ot">&lt;-</span> <span class="fu">gsub</span>(<span class="st">&quot;&lt;think&gt;.*?&lt;/think&gt;&quot;</span>, <span class="st">&quot;&quot;</span>, x, <span class="at">perl =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>  <span class="fu">trimws</span>(<span class="fu">gsub</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">.*&quot;</span>, <span class="st">&quot;&quot;</span>, <span class="fu">trimws</span>(x)))</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>}</span></code></pre></div>
+</blockquote>
 </div>
 </div>
 <div id="using-quick_llama-for-batches" class="section level2">
 <h2>Using quick_llama() for Batches</h2>
 <p>The simplest approach for parallel processing is passing a vector to
 <code>quick_llama()</code>:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># quick_llama automatically uses parallel mode for vectors</span></span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>prompts <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  <span class="st">&quot;Summarize: Climate change is affecting global weather patterns...&quot;</span>,</span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>  <span class="st">&quot;Summarize: The stock market reached new highs today...&quot;</span>,</span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>  <span class="st">&quot;Summarize: Scientists discovered a new species of deep-sea fish...&quot;</span></span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>)</span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a></span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(prompts, <span class="at">max_tokens =</span> <span class="dv">50</span>)</span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># quick_llama automatically uses parallel mode for vectors</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>prompts <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  <span class="st">&quot;Summarize: Climate change is affecting global weather patterns...&quot;</span>,</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>  <span class="st">&quot;Summarize: The stock market reached new highs today...&quot;</span>,</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>  <span class="st">&quot;Summarize: Scientists discovered a new species of deep-sea fish...&quot;</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>)</span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(prompts, <span class="at">max_tokens =</span> <span class="dv">50</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
 </div>
 <div id="performance-considerations" class="section level2">
 <h2>Performance Considerations</h2>
 <div id="context-size-and-n_seq_max" class="section level3">
 <h3>Context Size and n_seq_max</h3>
 <p>The context window is shared across parallel sequences:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># If n_ctx = 2048 and n_seq_max = 8</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co"># Each sequence gets approximately 2048/8 = 256 tokens</span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a></span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># For longer prompts, increase n_ctx proportionally</span></span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(</span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>  model,</span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>  <span class="at">n_ctx =</span> <span class="dv">4096</span>,   <span class="co"># Larger context</span></span>
-<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>  <span class="at">n_seq_max =</span> <span class="dv">8</span>   <span class="co"># 8 parallel sequences</span></span>
-<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># If n_ctx = 2048 and n_seq_max = 8</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co"># Each sequence gets approximately 2048/8 = 256 tokens</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># For longer prompts, increase n_ctx proportionally</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>  model,</span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>  <span class="at">n_ctx =</span> <span class="dv">4096</span>,   <span class="co"># Larger context</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>  <span class="at">n_seq_max =</span> <span class="dv">8</span>   <span class="co"># 8 parallel sequences</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>)</span></code></pre></div>
 </div>
 <div id="memory-usage" class="section level3">
 <h3>Memory Usage</h3>
 <p>Parallel processing uses more memory. Monitor with:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Available RAM:&quot;</span>, <span class="fu">round</span>(hw<span class="sc">$</span>ram_total <span class="sc">/</span> <span class="fl">1e9</span>, <span class="dv">1</span>), <span class="st">&quot;GB</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;GPU:&quot;</span>, hw<span class="sc">$</span>gpu<span class="sc">$</span>name, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>hw <span class="ot">&lt;-</span> <span class="fu">hardware_profile</span>()</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Available RAM:&quot;</span>, <span class="fu">round</span>(hw<span class="sc">$</span>ram_total <span class="sc">/</span> <span class="fl">1e9</span>, <span class="dv">1</span>), <span class="st">&quot;GB</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;GPU:&quot;</span>, hw<span class="sc">$</span>gpu<span class="sc">$</span>name, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
 </div>
 <div id="batch-size-recommendations" class="section level3">
 <h3>Batch Size Recommendations</h3>
@@ -559,50 +622,50 @@ in <strong>~65% of the time</strong> compared to sequential
 <div id="error-handling" class="section level2">
 <h2>Error Handling</h2>
 <p>If a prompt fails, the result will contain an error message:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(ctx, prompts, <span class="at">max_tokens =</span> <span class="dv">50</span>)</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co"># Check for errors</span></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(results)) {</span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">grepl</span>(<span class="st">&quot;^Error:&quot;</span>, results[i])) {</span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;Prompt&quot;</span>, i, <span class="st">&quot;failed:&quot;</span>, results[i], <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>  }</span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(ctx, prompts, <span class="at">max_tokens =</span> <span class="dv">50</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co"># Check for errors</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(results)) {</span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">grepl</span>(<span class="st">&quot;^Error:&quot;</span>, results[i])) {</span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;Prompt&quot;</span>, i, <span class="st">&quot;failed:&quot;</span>, results[i], <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>  }</span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>}</span></code></pre></div>
 </div>
 <div id="complete-workflow" class="section level2">
 <h2>Complete Workflow</h2>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co"># 1. Setup</span></span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">2048</span>, <span class="at">n_seq_max =</span> <span class="dv">10</span>)</span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a></span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co"># 2. Prepare prompts</span></span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;ag_news_sample&quot;</span>, <span class="at">package =</span> <span class="st">&quot;localLLM&quot;</span>)</span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a></span>
-<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>prompts <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="fu">seq_len</span>(<span class="fu">nrow</span>(ag_news_sample)), <span class="cf">function</span>(i) {</span>
-<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>  messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;system&quot;</span>, <span class="at">content =</span> <span class="st">&quot;Classify news articles.&quot;</span>),</span>
-<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> <span class="fu">paste0</span>(</span>
-<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a>      <span class="st">&quot;Category (World/Sports/Business/Sci/Tech): &quot;</span>,</span>
-<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a>      ag_news_sample<span class="sc">$</span>title[i]</span>
-<span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a>    ))</span>
-<span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a>  )</span>
-<span id="cb15-18"><a href="#cb15-18" tabindex="-1"></a>  <span class="fu">apply_chat_template</span>(model, messages)</span>
-<span id="cb15-19"><a href="#cb15-19" tabindex="-1"></a>})</span>
-<span id="cb15-20"><a href="#cb15-20" tabindex="-1"></a></span>
-<span id="cb15-21"><a href="#cb15-21" tabindex="-1"></a><span class="co"># 3. Process in batches with progress</span></span>
-<span id="cb15-22"><a href="#cb15-22" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(</span>
-<span id="cb15-23"><a href="#cb15-23" tabindex="-1"></a>  ctx, prompts,</span>
-<span id="cb15-24"><a href="#cb15-24" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">10</span>,</span>
-<span id="cb15-25"><a href="#cb15-25" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">42</span>,</span>
-<span id="cb15-26"><a href="#cb15-26" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb15-27"><a href="#cb15-27" tabindex="-1"></a>  <span class="at">clean =</span> <span class="cn">TRUE</span></span>
-<span id="cb15-28"><a href="#cb15-28" tabindex="-1"></a>)</span>
-<span id="cb15-29"><a href="#cb15-29" tabindex="-1"></a></span>
-<span id="cb15-30"><a href="#cb15-30" tabindex="-1"></a><span class="co"># 4. Extract and evaluate</span></span>
-<span id="cb15-31"><a href="#cb15-31" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">sapply</span>(results, <span class="cf">function</span>(x) <span class="fu">trimws</span>(<span class="fu">gsub</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">n.*&quot;</span>, <span class="st">&quot;&quot;</span>, x)))</span>
-<span id="cb15-32"><a href="#cb15-32" tabindex="-1"></a>accuracy <span class="ot">&lt;-</span> <span class="fu">mean</span>(predictions <span class="sc">==</span> ag_news_sample<span class="sc">$</span>class)</span>
-<span id="cb15-33"><a href="#cb15-33" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Accuracy:&quot;</span>, <span class="fu">round</span>(accuracy <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">&quot;%</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a><span class="co"># 1. Setup</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>, <span class="at">n_gpu_layers =</span> <span class="dv">999</span>)</span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_ctx =</span> <span class="dv">2048</span>, <span class="at">n_seq_max =</span> <span class="dv">10</span>)</span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a></span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a><span class="co"># 2. Prepare prompts</span></span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;ag_news_sample&quot;</span>, <span class="at">package =</span> <span class="st">&quot;localLLM&quot;</span>)</span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a></span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a>prompts <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="fu">seq_len</span>(<span class="fu">nrow</span>(ag_news_sample)), <span class="cf">function</span>(i) {</span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a>  messages <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;system&quot;</span>, <span class="at">content =</span> <span class="st">&quot;Classify news articles.&quot;</span>),</span>
+<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">role =</span> <span class="st">&quot;user&quot;</span>, <span class="at">content =</span> <span class="fu">paste0</span>(</span>
+<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a>      <span class="st">&quot;Category (World/Sports/Business/Sci/Tech): &quot;</span>,</span>
+<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a>      ag_news_sample<span class="sc">$</span>title[i]</span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a>    ))</span>
+<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a>  )</span>
+<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a>  <span class="fu">apply_chat_template</span>(model, messages)</span>
+<span id="cb16-19"><a href="#cb16-19" tabindex="-1"></a>})</span>
+<span id="cb16-20"><a href="#cb16-20" tabindex="-1"></a></span>
+<span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a><span class="co"># 3. Process in batches with progress</span></span>
+<span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(</span>
+<span id="cb16-23"><a href="#cb16-23" tabindex="-1"></a>  ctx, prompts,</span>
+<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">10</span>,</span>
+<span id="cb16-25"><a href="#cb16-25" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">42</span>,</span>
+<span id="cb16-26"><a href="#cb16-26" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb16-27"><a href="#cb16-27" tabindex="-1"></a>  <span class="at">clean =</span> <span class="cn">TRUE</span></span>
+<span id="cb16-28"><a href="#cb16-28" tabindex="-1"></a>)</span>
+<span id="cb16-29"><a href="#cb16-29" tabindex="-1"></a></span>
+<span id="cb16-30"><a href="#cb16-30" tabindex="-1"></a><span class="co"># 4. Extract and evaluate</span></span>
+<span id="cb16-31"><a href="#cb16-31" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">sapply</span>(results, <span class="cf">function</span>(x) <span class="fu">trimws</span>(<span class="fu">gsub</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">n.*&quot;</span>, <span class="st">&quot;&quot;</span>, x)))</span>
+<span id="cb16-32"><a href="#cb16-32" tabindex="-1"></a>accuracy <span class="ot">&lt;-</span> <span class="fu">mean</span>(predictions <span class="sc">==</span> ag_news_sample<span class="sc">$</span>class)</span>
+<span id="cb16-33"><a href="#cb16-33" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Accuracy:&quot;</span>, <span class="fu">round</span>(accuracy <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">&quot;%</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
 </div>
 <div id="summary" class="section level2">
 <h2>Summary</h2>
@@ -640,13 +703,24 @@ in <strong>~65% of the time</strong> compared to sequential
 for parallel use</li>
 <li><strong>Scale <code>n_ctx</code></strong> with
 <code>n_seq_max</code> to give each sequence enough space</li>
-<li><strong>Enable <code>progress = TRUE</code></strong> for large
-batches</li>
+<li><strong>Progress is shown automatically</strong> in interactive
+sessions; set <code>progress = TRUE</code> to force it in scripts</li>
 <li><strong>Use <code>clean = TRUE</code></strong> to automatically
 strip control tokens</li>
 <li><strong>Set consistent <code>seed</code></strong> for
 reproducibility across batches</li>
+<li><strong>Set <code>verbosity = 0</code></strong> in scripts and
+automated pipelines to prevent backend log lines from appearing in
+output files or <code>R CMD check</code> output.
+<code>generate_parallel()</code> already defaults to
+<code>verbosity = 0</code>; suppress loading output by passing
+<code>verbosity = 0</code> to <code>model_load()</code> and
+<code>context_create()</code> as well:</li>
 </ol>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="co"># Fully silent batch pipeline</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>model   <span class="ot">&lt;-</span> <span class="fu">model_load</span>(<span class="st">&quot;model.gguf&quot;</span>,          <span class="at">verbosity =</span> <span class="dv">0</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>ctx     <span class="ot">&lt;-</span> <span class="fu">context_create</span>(model, <span class="at">n_seq_max =</span> <span class="dv">8</span>, <span class="at">verbosity =</span> <span class="dv">0</span>)</span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">generate_parallel</span>(ctx, prompts, <span class="at">max_tokens =</span> <span class="dv">50</span>, <span class="at">progress =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
 </div>
 <div id="next-steps" class="section level2">
 <h2>Next Steps</h2>

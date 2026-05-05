@@ -15,7 +15,8 @@ generate(
   penalty_repeat = 1,
   seed = 1234L,
   clean = FALSE,
-  hash = TRUE
+  hash = TRUE,
+  verbosity = 0L
 )
 }
 \arguments{
@@ -27,7 +28,8 @@ generate(
 
 \item{top_k}{Top-k sampling parameter (default: 40). Limits vocabulary to k most likely tokens. Use 0 to disable}
 
-\item{top_p}{Top-p (nucleus) sampling parameter (default: 1.0). Cumulative probability threshold for token selection}
+\item{top_p}{Top-p (nucleus) sampling (default: 1.0). Probability threshold
+for token selection.}
 
 \item{temperature}{Sampling temperature (default: 0.0). Set to 0 for greedy decoding. Higher values increase creativity}
 
@@ -42,6 +44,17 @@ generate(
 \item{hash}{When `TRUE` (default), computes SHA-256 hashes for the provided prompt and
 the resulting output. Hashes are attached via the `"hashes"` attribute for
 later inspection.}
+
+\item{verbosity}{Control backend logging during generation (default: 0L).
+Larger numbers print more detail: \code{0} shows only errors, \code{1}
+adds warnings, \code{2} prints informational messages, and \code{3}
+enables the most verbose debug output. Negative values fully suppress
+backend output. Defaults to quiet (\code{0}) because \code{generate()}
+is typically called inside loops where per-call backend logs would be
+noisy. This differs from \code{\link{model_load}} and
+\code{\link{context_create}} (default \code{1L}), which run once per
+session and benefit from warnings being visible. Raise to \code{2L}
+or \code{3L} when debugging llama.cpp internals.}
 }
 \value{
 Character string containing the generated text
@@ -60,7 +73,8 @@ ctx <- context_create(model, n_ctx = 2048)
 response <- generate(ctx, "Hello, how are you?", max_tokens = 50)
 
 # Creative writing with higher temperature
-story <- generate(ctx, "Once upon a time", max_tokens = 200, temperature = 0.8)
+story <- generate(ctx, "Once upon a time",
+                  max_tokens = 200, temperature = 0.8)
 
 # Prevent repetition
 no_repeat <- generate(ctx, "Tell me about AI",
