@@ -6,81 +6,98 @@ knitr::opts_chunk$set(
 )
 
 ## -----------------------------------------------------------------------------
-#  # Install from CRAN
-#  install.packages("localLLM")
+# install.packages("localLLM")
+# packageVersion("localLLM")
 
 ## -----------------------------------------------------------------------------
-#  library(localLLM)
-#  install_localLLM()
-#  
-#  # Force CPU build even when a GPU is detected
-#  install_localLLM(force_cpu = TRUE)
-#  
-#  # Reinstall after adding a GPU driver (re-runs detection)
-#  install_localLLM(force_reinstall = TRUE)
+# options(download.file.method = "libcurl")
+# install.packages("localLLM", type = "source")
+# packageVersion("localLLM")
 
 ## -----------------------------------------------------------------------------
-#  library(localLLM)
-#  
-#  response <- quick_llama("What is the capital of France?")
-#  cat(response)
+# # install.packages("remotes")
+# 
+# # A specific release (recommended), e.g. v1.4.1
+# remotes::install_github("EddieYang211/localLLM@v1.4.1", subdir = "localLLM")
+# 
+# # The latest development version
+# remotes::install_github("EddieYang211/localLLM", subdir = "localLLM")
 
 ## -----------------------------------------------------------------------------
-#  response <- quick_llama(
-#    'Classify the sentiment of the following tweet into one of two
-#     categories: Positive or Negative.
-#  
-#     Tweet: "This paper is amazing! I really like it."'
-#  )
-#  
-#  cat(response)
+# remotes::install_version("localLLM", version = "1.3.0")  # from the CRAN archive
 
 ## -----------------------------------------------------------------------------
-#  # Process multiple prompts at once
-#  prompts <- c(
-#  
-#    "What is 2 + 2?",
-#    "Name one planet in our solar system.",
-#    "What color is the sky?"
-#  )
-#  
-#  responses <- quick_llama(prompts)
-#  print(responses)
+# library(localLLM)
+# install_localLLM()
+# 
+# # Force CPU build even when a GPU is detected
+# install_localLLM(force_cpu = TRUE)
+# 
+# # Reinstall after adding a GPU driver (re-runs detection)
+# install_localLLM(force_reinstall = TRUE)
 
 ## -----------------------------------------------------------------------------
-#  # From Hugging Face URL
-#  response <- quick_llama(
-#    "Explain quantum physics simply",
-#    model_path = "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf"
-#  )
-#  
-#  # From local file
-#  response <- quick_llama(
-#    "Explain quantum physics simply",
-#    model_path = "/path/to/your/model.gguf"
-#  )
-#  
-#  # From cache (name fragment)
-#  response <- quick_llama(
-#    "Explain quantum physics simply",
-#    model_path = "Llama-3.2"
-#  )
+# library(localLLM)
+# 
+# response <- quick_llama("What is the capital of France?")
+# cat(response)
 
 ## -----------------------------------------------------------------------------
-#  # List all cached models
-#  cached <- list_cached_models()
-#  print(cached)
+# response <- quick_llama(
+#   'Classify the sentiment of the following tweet into one of two
+#    categories: Positive or Negative.
+# 
+#    Tweet: "This paper is amazing! I really like it."'
+# )
+# 
+# cat(response)
 
 ## -----------------------------------------------------------------------------
-#  # Delete a cached model by name
-#  file.remove(cached$path[cached$name == "Llama-3.2-3B-Instruct-Q5_K_M.gguf"])
+# # Process multiple prompts at once
+# prompts <- c(
+# 
+#   "What is 2 + 2?",
+#   "Name one planet in our solar system.",
+#   "What color is the sky?"
+# )
+# 
+# responses <- quick_llama(prompts)
+# print(responses)
 
 ## -----------------------------------------------------------------------------
-#  response <- quick_llama(
-#    prompt = "Write a haiku about programming",
-#    temperature = 0.8,      # Higher = more creative (default: 0)
-#    max_tokens = 100,       # Maximum response length
-#    seed = 42,              # For reproducibility
-#    n_gpu_layers = 999      # Use GPU if available
-#  )
+# # From Hugging Face URL
+# response <- quick_llama(
+#   "Explain quantum physics simply",
+#   model_path = "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf"
+# )
+# 
+# # From local file
+# response <- quick_llama(
+#   "Explain quantum physics simply",
+#   model_path = "/path/to/your/model.gguf"
+# )
+# 
+# # From cache (name fragment)
+# response <- quick_llama(
+#   "Explain quantum physics simply",
+#   model_path = "Llama-3.2"
+# )
+
+## -----------------------------------------------------------------------------
+# # List all cached models
+# cached <- list_cached_models()
+# print(cached)
+
+## -----------------------------------------------------------------------------
+# # Delete a cached model by name
+# file.remove(cached$path[cached$name == "Llama-3.2-3B-Instruct-Q5_K_M.gguf"])
+
+## -----------------------------------------------------------------------------
+# response <- quick_llama(
+#   prompt = "Write a haiku about programming",
+#   temperature = 0.8,      # Higher = more creative (default: 0)
+#   max_tokens = 100,       # Maximum response length
+#   seed = 42,              # For reproducibility
+#   n_gpu_layers = 999      # Use GPU if available
+# )
 

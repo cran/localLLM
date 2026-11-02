@@ -351,15 +351,68 @@ machine, completely free, with reproducibility by default.</p>
 and downloading the backend C++ library.</p>
 <div id="step-1-install-the-r-package" class="section level3">
 <h3>Step 1: Install the R package</h3>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># Install from CRAN</span></span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">&quot;localLLM&quot;</span>)</span></code></pre></div>
+<p>For current R releases, the standard CRAN installation is
+recommended:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">&quot;localLLM&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">packageVersion</span>(<span class="st">&quot;localLLM&quot;</span>)</span></code></pre></div>
+<div id="if-cran-gives-you-an-older-version" class="section level4">
+<h4>If CRAN gives you an older version</h4>
+<p>CRAN builds pre-compiled (binary) packages only for the current R
+release and the previous one. On an older R,
+<code>install.packages()</code> therefore installs the last binary that
+was built for that R version, which can be older than the current
+localLLM release. For example, on R 4.4, CRAN’s Windows and Apple
+Silicon binaries stopped at localLLM 1.2.1, so
+<code>install.packages(&quot;localLLM&quot;)</code> could not install 1.3.0
+there.</p>
+<p>If <code>packageVersion(&quot;localLLM&quot;)</code> is older than the version
+shown on <a href="https://cran.r-project.org/package=localLLM">CRAN</a>,
+either update R (recommended), or install the current version from
+source:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">options</span>(<span class="at">download.file.method =</span> <span class="st">&quot;libcurl&quot;</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">&quot;localLLM&quot;</span>, <span class="at">type =</span> <span class="st">&quot;source&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="fu">packageVersion</span>(<span class="st">&quot;localLLM&quot;</span>)</span></code></pre></div>
+<p>Installing from source compiles the package’s C++ code, so you need a
+compiler toolchain: <a href="https://cran.r-project.org/bin/windows/Rtools/">Rtools</a> on
+Windows, the Xcode Command Line Tools on macOS
+(<code>xcode-select --install</code> in the Terminal), or the usual
+build tools (<code>build-essential</code> or similar) on Linux.</p>
+</div>
+<div id="from-github" class="section level4">
+<h4>From GitHub</h4>
+<p>To get a version that is not on CRAN yet, install the package from
+GitHub. The R package lives in the <code>localLLM</code> subdirectory of
+the repository, so pass <code>subdir</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># install.packages(&quot;remotes&quot;)</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co"># A specific release (recommended), e.g. v1.4.1</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;EddieYang211/localLLM@v1.4.1&quot;</span>, <span class="at">subdir =</span> <span class="st">&quot;localLLM&quot;</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># The latest development version</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;EddieYang211/localLLM&quot;</span>, <span class="at">subdir =</span> <span class="st">&quot;localLLM&quot;</span>)</span></code></pre></div>
+<p>This also compiles from source and needs the same toolchain as above.
+Each package version downloads its matching backend in Step 2. If
+<code>install_localLLM()</code> cannot find the backend for a
+development version, the backend for that version has not been published
+yet; install a release tag instead.</p>
+</div>
+<div id="a-specific-older-version" class="section level4">
+<h4>A specific older version</h4>
+<p>The package version affects the output: a newer localLLM or backend
+can change results for the same model, prompt and seed. To reproduce an
+analysis that used an older version, install that exact version:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_version</span>(<span class="st">&quot;localLLM&quot;</span>, <span class="at">version =</span> <span class="st">&quot;1.3.0&quot;</span>)  <span class="co"># from the CRAN archive</span></span></code></pre></div>
+<p>Then run Step 2, which installs the backend matching that version.
+See the <em>Reproducible Output</em> vignette for details.</p>
+</div>
 </div>
 <div id="step-2-install-the-backend-library" class="section level3">
 <h3>Step 2: Install the backend library</h3>
-<p>The <code>install_localLLM()</code> function automatically detects
-your platform and downloads the appropriate pre-compiled library. GPU
-acceleration is selected automatically when a compatible GPU driver is
-detected:</p>
+<p>The <code>install_localLLM()</code> function installs the separate
+backend library used by the R package. It does not upgrade the R package
+itself. The function automatically detects your platform and downloads
+the appropriate pre-compiled library. GPU acceleration is selected
+automatically when a compatible GPU driver is detected:</p>
 <table>
 <thead>
 <tr class="header">
@@ -393,24 +446,24 @@ detected:</p>
 </table>
 <p>On Windows and Linux, if no GPU driver is found, the CPU build is
 installed automatically.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">install_localLLM</span>()</span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># Force CPU build even when a GPU is detected</span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="fu">install_localLLM</span>(<span class="at">force_cpu =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a></span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># Reinstall after adding a GPU driver (re-runs detection)</span></span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="fu">install_localLLM</span>(<span class="at">force_reinstall =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">install_localLLM</span>()</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># Force CPU build even when a GPU is detected</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="fu">install_localLLM</span>(<span class="at">force_cpu =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># Reinstall after adding a GPU driver (re-runs detection)</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="fu">install_localLLM</span>(<span class="at">force_reinstall =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 </div>
 </div>
 <div id="your-first-llm-query" class="section level2">
 <h2>Your First LLM Query</h2>
 <p>The simplest way to get started is with
 <code>quick_llama()</code>:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;What is the capital of France?&quot;</span>)</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="fu">cat</span>(response)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(<span class="st">&quot;What is the capital of France?&quot;</span>)</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="fu">cat</span>(response)</span></code></pre></div>
 <pre><code>#&gt; The capital of France is Paris.</code></pre>
 <p><code>quick_llama()</code> is a high-level wrapper designed for
 convenience. On first run, it automatically downloads and caches the
@@ -420,14 +473,14 @@ default model (<code>Llama-3.2-3B-Instruct-Q5_K_M.gguf</code>).</p>
 <h2>Text Classification Example</h2>
 <p>A common use case is classifying text. Here’s a sentiment analysis
 example:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="st">&#39;Classify the sentiment of the following tweet into one of two</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="st">   categories: Positive or Negative.</span></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="st">   Tweet: &quot;This paper is amazing! I really like it.&quot;&#39;</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>)</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="fu">cat</span>(response)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="st">&#39;Classify the sentiment of the following tweet into one of two</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="st">   categories: Positive or Negative.</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="st">   Tweet: &quot;This paper is amazing! I really like it.&quot;&#39;</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>)</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="fu">cat</span>(response)</span></code></pre></div>
 <pre><code>#&gt; The sentiment of this tweet is Positive.</code></pre>
 </div>
 <div id="processing-multiple-prompts" class="section level2">
@@ -438,16 +491,16 @@ example:</p>
 <li><strong>Vector of strings</strong>: Automatically switches to
 parallel generation mode</li>
 </ul>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># Process multiple prompts at once</span></span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>prompts <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="st">&quot;What is 2 + 2?&quot;</span>,</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="st">&quot;Name one planet in our solar system.&quot;</span>,</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="st">&quot;What color is the sky?&quot;</span></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>)</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>responses <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(prompts)</span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="fu">print</span>(responses)</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Process multiple prompts at once</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>prompts <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  <span class="st">&quot;What is 2 + 2?&quot;</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>  <span class="st">&quot;Name one planet in our solar system.&quot;</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>  <span class="st">&quot;What color is the sky?&quot;</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>)</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>responses <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(prompts)</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="fu">print</span>(responses)</span></code></pre></div>
 <pre><code>#&gt; [1] &quot;2 + 2 equals 4.&quot;
 #&gt; [2] &quot;One planet in our solar system is Mars.&quot;
 #&gt; [3] &quot;The sky is typically blue during the day.&quot;</code></pre>
@@ -466,46 +519,46 @@ format. You can find thousands of GGUF models on <a href="https://huggingface.co
 </div>
 <div id="loading-different-models" class="section level3">
 <h3>Loading Different Models</h3>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># From Hugging Face URL</span></span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="st">&quot;Explain quantum physics simply&quot;</span>,</span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="at">model_path =</span> <span class="st">&quot;https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf&quot;</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>)</span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a></span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># From local file</span></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
-<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  <span class="st">&quot;Explain quantum physics simply&quot;</span>,</span>
-<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>  <span class="at">model_path =</span> <span class="st">&quot;/path/to/your/model.gguf&quot;</span></span>
-<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>)</span>
-<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a></span>
-<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a><span class="co"># From cache (name fragment)</span></span>
-<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
-<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>  <span class="st">&quot;Explain quantum physics simply&quot;</span>,</span>
-<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>  <span class="at">model_path =</span> <span class="st">&quot;Llama-3.2&quot;</span></span>
-<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># From Hugging Face URL</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  <span class="st">&quot;Explain quantum physics simply&quot;</span>,</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>  <span class="at">model_path =</span> <span class="st">&quot;https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF/resolve/main/gemma-3-4b-it-qat-Q5_K_M.gguf&quot;</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>)</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co"># From local file</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>  <span class="st">&quot;Explain quantum physics simply&quot;</span>,</span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>  <span class="at">model_path =</span> <span class="st">&quot;/path/to/your/model.gguf&quot;</span></span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>)</span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a></span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a><span class="co"># From cache (name fragment)</span></span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a>  <span class="st">&quot;Explain quantum physics simply&quot;</span>,</span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a>  <span class="at">model_path =</span> <span class="st">&quot;Llama-3.2&quot;</span></span>
+<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a>)</span></code></pre></div>
 </div>
 <div id="managing-cached-models" class="section level3">
 <h3>Managing Cached Models</h3>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># List all cached models</span></span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>cached <span class="ot">&lt;-</span> <span class="fu">list_cached_models</span>()</span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="fu">print</span>(cached)</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># List all cached models</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>cached <span class="ot">&lt;-</span> <span class="fu">list_cached_models</span>()</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="fu">print</span>(cached)</span></code></pre></div>
 <pre><code>#&gt;                                 name size_bytes            modified
 #&gt; 1 Llama-3.2-3B-Instruct-Q5_K_M.gguf 2322153920 2025-12-05 20:01:18
 #&gt; 2   gemma-3-4b-it-qat-Q5_K_M.gguf   2829698176 2025-12-14 19:21:11</code></pre>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># Delete a cached model by name</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">file.remove</span>(cached<span class="sc">$</span>path[cached<span class="sc">$</span>name <span class="sc">==</span> <span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>])</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="co"># Delete a cached model by name</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="fu">file.remove</span>(cached<span class="sc">$</span>path[cached<span class="sc">$</span>name <span class="sc">==</span> <span class="st">&quot;Llama-3.2-3B-Instruct-Q5_K_M.gguf&quot;</span>])</span></code></pre></div>
 </div>
 </div>
 <div id="customizing-generation" class="section level2">
 <h2>Customizing Generation</h2>
 <p>Control the output with various parameters:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  <span class="at">prompt =</span> <span class="st">&quot;Write a haiku about programming&quot;</span>,</span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="at">temperature =</span> <span class="fl">0.8</span>,      <span class="co"># Higher = more creative (default: 0)</span></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">100</span>,       <span class="co"># Maximum response length</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">42</span>,              <span class="co"># For reproducibility</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>  <span class="at">n_gpu_layers =</span> <span class="dv">999</span>      <span class="co"># Use GPU if available</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">quick_llama</span>(</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>  <span class="at">prompt =</span> <span class="st">&quot;Write a haiku about programming&quot;</span>,</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>  <span class="at">temperature =</span> <span class="fl">0.8</span>,      <span class="co"># Higher = more creative (default: 0)</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>  <span class="at">max_tokens =</span> <span class="dv">100</span>,       <span class="co"># Maximum response length</span></span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">42</span>,              <span class="co"># For reproducibility</span></span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>  <span class="at">n_gpu_layers =</span> <span class="dv">999</span>      <span class="co"># Use GPU if available</span></span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>)</span></code></pre></div>
 </div>
 <div id="next-steps" class="section level2">
 <h2>Next Steps</h2>

@@ -458,7 +458,7 @@ Duration: 289.9 seconds
 Events:
 - [2025-01-15 14:30:22 EST] document_start
     {
-      &quot;package_version&quot;: &quot;1.2.1&quot;,
+      &quot;package_version&quot;: &quot;1.4.1&quot;,
       &quot;r_version&quot;: &quot;4.4.1&quot;,
       &quot;platform&quot;: &quot;aarch64-apple-darwin22.6.0&quot;,
       &quot;os&quot;: &quot;Darwin&quot;,
@@ -551,6 +551,78 @@ verify:</p>
 <span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>cached <span class="ot">&lt;-</span> <span class="fu">list_cached_models</span>()</span>
 <span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a><span class="fu">print</span>(cached[, <span class="fu">c</span>(<span class="st">&quot;name&quot;</span>, <span class="st">&quot;size_bytes&quot;</span>, <span class="st">&quot;modified&quot;</span>)])</span></code></pre></div>
 </div>
+<div id="record-the-package-and-backend-version" class="section level3">
+<h3>6. Record the Package and Backend Version</h3>
+<p>Outputs depend on the software version, not only on the prompt and
+seed. Upgrading localLLM or its backend can change results. For example,
+localLLM 1.4.0 fixed how chat-template markers such as
+<code>&lt;|im_start|&gt;</code> are tokenized, so the same prompt and
+seed can produce different text than in 1.3.0.
+<code>document_start()</code> records the package version automatically;
+you can also report it directly:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">packageVersion</span>(<span class="st">&quot;localLLM&quot;</span>)</span></code></pre></div>
+</div>
+<div id="reproduce-results-from-an-older-version" class="section level3">
+<h3>7. Reproduce Results from an Older Version</h3>
+<p>To reproduce results that were produced with an older localLLM
+version, install that exact version and then its matching backend. Each
+package version downloads the backend it was released with:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="co"># install.packages(&quot;remotes&quot;)</span></span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a><span class="co"># From the CRAN archive, e.g. version 1.3.0</span></span>
+<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_version</span>(<span class="st">&quot;localLLM&quot;</span>, <span class="at">version =</span> <span class="st">&quot;1.3.0&quot;</span>)</span>
+<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a></span>
+<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a><span class="co"># Or from the matching GitHub release tag</span></span>
+<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;EddieYang211/localLLM@v1.3.0&quot;</span>, <span class="at">subdir =</span> <span class="st">&quot;localLLM&quot;</span>)</span>
+<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a></span>
+<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a><span class="fu">library</span>(localLLM)</span>
+<span id="cb20-10"><a href="#cb20-10" tabindex="-1"></a><span class="fu">install_localLLM</span>()          <span class="co"># downloads the backend for this package version</span></span>
+<span id="cb20-11"><a href="#cb20-11" tabindex="-1"></a><span class="fu">packageVersion</span>(<span class="st">&quot;localLLM&quot;</span>)  <span class="co"># confirm the version</span></span></code></pre></div>
+<p>A few things to keep in mind:</p>
+<ul>
+<li>Both commands build the package from source, so you need a compiler
+toolchain (see the <em>Get Started</em> vignette).</li>
+<li>Backends are stored per version, so going back to a newer version
+later does not download its backend again.</li>
+<li>To keep your current version installed as well, install the older
+one into a separate library with
+<code>remotes::install_version(..., lib = &quot;path/to/lib&quot;)</code>, and
+load it with <code>library(localLLM, lib.loc = &quot;path/to/lib&quot;)</code> in
+a fresh R session. A project-level tool such as <a href="https://rstudio.github.io/renv/">renv</a> also works.</li>
+<li>Use the same model file and generation settings. For bit-identical
+output, also use the same hardware (see below).</li>
+<li>An older version reproduces its own behavior, including any bugs
+that were fixed later (see <code>NEWS.md</code>).</li>
+</ul>
+</div>
+</div>
+<div id="what-reproducibility-covers" class="section level2">
+<h2>What Reproducibility Covers</h2>
+<p>Repeated runs give identical output when all of the following are the
+same:</p>
+<ul>
+<li>the model file,</li>
+<li>the localLLM package and backend version,</li>
+<li>the hardware, the GPU backend, and the number of threads,</li>
+<li>the generation parameters and the seed.</li>
+</ul>
+<p>A few caveats:</p>
+<ul>
+<li><strong>CPU</strong>: llama.cpp splits work across threads in a
+fixed way, so identical output on the same machine with the same
+<code>n_threads</code> is expected.</li>
+<li><strong>GPU (Metal, Vulkan)</strong>: repeated runs on the same
+machine were identical in our tests, but bit-for-bit identity is not a
+formal guarantee of the GPU libraries.</li>
+<li><strong>Different machines</strong>: results can differ across
+hardware. For example, llama.cpp tunes some Metal kernels per Apple
+chip, and CPU builds use different instruction sets.</li>
+<li><strong>Mixture-of-experts (MoE) models</strong> have an extra
+source of variation in expert routing.</li>
+</ul>
+<p>When exact replication matters, share the model file (or its hash),
+the package version, and your hardware profile together with the output
+hashes.</p>
 </div>
 <div id="summary" class="section level2">
 <h2>Summary</h2>
@@ -593,10 +665,15 @@ verify:</p>
 <td><code>hardware_profile()</code></td>
 <td>Record execution environment</td>
 </tr>
+<tr class="even">
+<td>Version info</td>
+<td><code>packageVersion(&quot;localLLM&quot;)</code></td>
+<td>Record the exact software version</td>
+</tr>
 </tbody>
 </table>
-<p>With these tools, your LLM-based analyses become fully reproducible
-and verifiable.</p>
+<p>With these tools, your LLM-based analyses can be reproduced and
+verified on the same software and hardware.</p>
 </div>
 
 
